@@ -112,20 +112,22 @@ for each row execute procedure public.set_updated_at();
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, email, role, full_name, subtitle, farm_name)
+  insert into public.profiles (id, email, role, full_name, subtitle, farm_name, phone)
   values (
     new.id,
     new.email,
     'farmer',
     coalesce(new.raw_user_meta_data->>'full_name', ''),
     coalesce(new.raw_user_meta_data->>'farm_name', ''),
-    coalesce(new.raw_user_meta_data->>'farm_name', '')
+    coalesce(new.raw_user_meta_data->>'farm_name', ''),
+    coalesce(new.raw_user_meta_data->>'phone', '')
   )
   on conflict (id) do update set
     email = excluded.email,
     full_name = coalesce(nullif(excluded.full_name, ''), profiles.full_name),
     farm_name = coalesce(nullif(excluded.farm_name, ''), profiles.farm_name),
-    subtitle = coalesce(nullif(excluded.subtitle, ''), profiles.subtitle);
+    subtitle = coalesce(nullif(excluded.subtitle, ''), profiles.subtitle),
+    phone = coalesce(nullif(excluded.phone, ''), profiles.phone);
   return new;
 end;
 $$;

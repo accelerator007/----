@@ -127,7 +127,7 @@ function Home({ onNav, session }) {
             {status === "ok" && "المصيدة تعمل بشكل ممتاز. لا حاجة لتدخّل."}
           </div>
           {status !== "ok" && (
-            <button className="btn btn-primary btn-sm" style={{marginTop: 10}} onClick={() => onNav("technician")}>
+            <button className="btn btn-primary btn-sm" style={{marginTop: 10}} onClick={() => onNav("technician", trap)}>
               <window.I.User size={13}/>
               اطلب فنّي
             </button>
@@ -312,10 +312,34 @@ function Alerts({ onNav }) {
 }
 
 // ===== Technician request =====
-function Technician({ onBack }) {
+function Technician({ trap, onBack }) {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState(1);
   const [issue, setIssue] = useState("صيانة دوريّة");
+  const [loading, setLoading] = useState(false);
+
+  const confirmBooking = async () => {
+    const sb = window.khoosSb;
+    if (!sb) { setStep(4); return; }
+    setLoading(true);
+    const tech = TECHNICIANS.find(t => t.id === selected) || { name: "غير محدد" };
+    try {
+      await sb.from("engineer_tasks").insert({
+        trap_id: trap?._uuid || null,
+        farm_name: trap?.farm || "",
+        trap_code: trap?.id || "",
+        title: `طلب ${issue} - فنّي: ${tech.name}`,
+        due_label: "مجدول: اليوم 14:00",
+        status: "open"
+      });
+      setStep(4);
+    } catch (e) {
+      console.error(e);
+      alert("حدث خطأ أثناء تأكيد الحجز.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="m-page-anim">
@@ -421,7 +445,7 @@ function Technician({ onBack }) {
               <span style={{color:"var(--ink-3)"}}>نوع الزيارة</span><span>{issue}</span>
             </div>
             <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
-              <span style={{color:"var(--ink-3)"}}>الفنّي</span><span>{TECHNICIANS.find(t => t.id === selected).name}</span>
+            <span style={{color:"var(--ink-3)"}}>فنّي</span><span>{TECHNICIANS.find(t => t.id === selected)?.name || "غير محدد"}</span>
             </div>
             <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
               <span style={{color:"var(--ink-3)"}}>الموعد</span><span>اليوم · 14:00</span>
@@ -433,8 +457,8 @@ function Technician({ onBack }) {
             </div>
           </div>
 
-          <button className="btn btn-primary btn-block btn-lg" onClick={() => setStep(4)}>
-            تأكيد الحجز
+          <button className="btn btn-primary btn-block btn-lg" onClick={confirmBooking} disabled={loading}>
+            {loading ? "جاري التأكيد..." : "تأكيد الحجز"}
           </button>
         </>}
 
@@ -983,8 +1007,8 @@ function App() {
     setOverlay(null);
   };
 
-  const navTo = function (p) {
-    if (p === "technician") setOverlay("technician");
+  const navTo = function (p, ctx) {
+    if (p === "technician") setOverlay(ctx || "technician");
     else if (p === "subscription") setOverlay("subscription");
     else if (p === "reports") setOverlay("reports");
     else if (p === "alerts") setTab("alerts");
@@ -1009,8 +1033,10 @@ function App() {
         }}
       />
     );
-  } else if (overlay === "technician") body = <Technician onBack={() => setOverlay(null)}/>;
-  else if (overlay === "subscription") body = <Subscription onBack={() => setOverlay(null)}/>;
+  } else if (overlay === "technician" || (overlay && overlay._uuid)) {
+    const t = overlay && overlay._uuid ? overlay : (window.DATA?.TRAPS_DATA?.[0] || null);
+    body = <Technician trap={t} onBack={() => setOverlay(null)}/>;
+  } else if (overlay === "subscription") body = <Subscription onBack={() => setOverlay(null)}/>;
   else if (overlay === "reports") body = <ReportsAnalytics onBack={() => setOverlay(null)} session={session}/>;
   else if (tab === "home") {
     if (role === "admin") body = <MobileAdminDash />;

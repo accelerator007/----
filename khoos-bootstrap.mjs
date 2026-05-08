@@ -45,6 +45,7 @@ function mapSession(user, row) {
     email: user.email || (row && row.email) || "",
     role: role,
     name: (row && row.full_name) || (user.email ? user.email.split("@")[0] : "") || "",
+    phone: (row && row.phone) || "",
     subtitle:
       (row && row.subtitle) ||
       (row && row.farm_name) ||
@@ -204,6 +205,7 @@ function mapUserProfile(row) {
     name: row.full_name || row.email || "—",
     role: row.role === "admin" ? "مدير" : row.role === "engineer" ? "مهندس" : "مزارع",
     email: row.email || "—",
+    phone: row.phone || "—",
     last: formatRelative(row.updated_at || row.created_at),
     active: row.is_active !== false,
     _uuid: row.id,

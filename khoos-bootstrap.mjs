@@ -213,6 +213,59 @@ function mapUserProfile(row) {
   };
 }
 
+globalThis.KhoosAI = {
+  getRecommendation(trap) {
+    if (!trap) return { status: "unknown", title: "لا توجد بيانات", body: "بانتظار مزامنة المصايد..." };
+
+    const today = trap.today || 0;
+    const battery = trap.battery || 0;
+    const signal = trap.signal || 0;
+
+    if (today >= 20) {
+      return {
+        status: "danger",
+        title: "حقن جذع النخيل فوراً",
+        body: `العدد (${today}) تجاوز العتبة الحرجة. ننصح باستخدام مبيد الكلوربيريفوس خلال 48 ساعة لمنع انتشار السوسة في الحقل.`,
+        action: "اطلب فنّي"
+      };
+    }
+
+    if (today >= 8) {
+      return {
+        status: "warn",
+        title: "مراقبة مكثفة",
+        body: "نمط الإصابة يشير إلى بداية نشاط. راقب المصيدة يومياً؛ إذا استمر الارتفاع لـ 3 أيام، ننصح بتغيير الفرمون أو البدء بالمعالجة الوقائية.",
+        action: "جدولة فحص"
+      };
+    }
+
+    if (battery < 20) {
+      return {
+        status: "warn",
+        title: "صيانة البطارية",
+        body: `مستوى الطاقة (${battery}%) منخفض جداً. قد يتوقف الجهاز عن الإرسال قريباً. يرجى استبدال البطارية أو فحص الألواح الشمسية.`,
+        action: "حجز صيانة"
+      };
+    }
+
+    if (signal < 30) {
+      return {
+        status: "info",
+        title: "تحسين الإشارة",
+        body: "قوة الاتصال ضعيفة. جرب تغيير زاوية الهوائي أو رفع المصيدة قليلاً لضمان دقة نقل البيانات الحية.",
+        action: "دليل التركيب"
+      };
+    }
+
+    return {
+      status: "ok",
+      title: "الحالة ممتازة",
+      body: "المصيدة تعمل بكفاءة عالية ولا توجد مؤشرات إصابة مقلقة حالياً. استمر في المتابعة الدورية.",
+      action: "عرض التفاصيل"
+    };
+  }
+};
+
 globalThis.KhoosData = {
   async refreshAll() {
     const sb = globalThis.khoosSb;

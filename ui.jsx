@@ -161,4 +161,22 @@ function Donut({ value, max = 100, size = 120, color = "var(--brand)", label, su
   );
 }
 
-window.UI = { KPI, AreaChart, BarChart, StatusBadge, Empty, Skeleton, Donut };
+function Modal({ isOpen, title, children, footer, onClose }) {
+  if (!isOpen) return null;
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-head row between">
+          <h2 style={{ fontSize: 18, fontWeight: 600 }}>{title}</h2>
+          <button className="icon-btn" onClick={onClose}><window.I.Plus size={20} style={{ transform: "rotate(45deg)" }} /></button>
+        </div>
+        <div className="modal-body">
+          {children}
+        </div>
+        {footer && <div className="modal-foot">{footer}</div>}
+      </div>
+    </div>
+  );
+}
+
+window.UI = { KPI, AreaChart, BarChart, StatusBadge, Empty, Skeleton, Donut, Modal };

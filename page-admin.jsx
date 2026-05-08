@@ -1,11 +1,24 @@
 // لوحة الأدمن — نظرة تشغيلية (بيانات تجريبية محليّة)
 
 function AdminHome({ onNav }) {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const update = () => setTick(x => x + 1);
+    window.addEventListener("khoos-data", update);
+    return () => window.removeEventListener("khoos-data", update);
+  }, []);
+
+  const UD = window.DATA?.USERS_DATA || [];
+  const TD = window.DATA?.TRAPS_DATA || [];
+  const AD = window.DATA?.ALERTS_DATA || [];
+
+  const criticalAlerts = AD.filter(a => a.sev === "critical").length;
+
   var rows = [
-    { k: "مستخدمون نشطون", v: "128", d: "+12 هذا الشهر", ok: true },
-    { k: "مصايد متصلة", v: "1,240", d: "٠٫٢٪ غير متصلة", ok: true },
-    { k: "تنبيهات حرجة (٢٤ س)", v: "7", d: "تحتاج متابعة", ok: false },
-    { k: "اشتراكات تنتهي خلال ٧ أيام", v: "14", d: "إرسال تذكير تلقائي", ok: false },
+    { k: "مستخدمون نشطون", v: UD.length, d: "من قاعدة البيانات", ok: true },
+    { k: "مصايد متصلة", v: TD.length, d: "إجمالي الأجهزة النشطة", ok: true },
+    { k: "تنبيهات حرجة", v: criticalAlerts, d: criticalAlerts > 0 ? "تحتاج متابعة فورية" : "لا توجد تنبيهات حرجة", ok: criticalAlerts === 0 },
+    { k: "إجمالي التنبيهات", v: AD.length, d: "آخر 80 تنبيه", ok: true },
   ];
 
   return (
@@ -110,4 +123,58 @@ function AdminHome({ onNav }) {
   );
 }
 
+function BillingAdminPage() {
+  const [plans] = React.useState([
+    { id: "starter", name: "البداية", price: 9, traps: 1, users: 12 },
+    { id: "farmer", name: "المزارع", price: 19, traps: 3, users: 84, popular: true },
+    { id: "premium", name: "المتميّز", price: 35, traps: 10, users: 32 },
+  ]);
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">إدارة الاشتراكات</h1>
+          <p className="page-sub">نظرة شاملة على باقات المستخدمين والإيرادات المتوقعة</p>
+        </div>
+      </div>
+
+      <div className="kpi-grid" style={{ marginBottom: 18 }}>
+        <window.UI.KPI eyebrow="إجمالي الإيراد الشهري" value="4,820" unit="ر.ع" delta="+5%" deltaDir="up" />
+        <window.UI.KPI eyebrow="مشتركين نشطين" value="246" delta="+12" deltaDir="up" />
+        <window.UI.KPI eyebrow="معدل الإلغاء (Churn)" value="2.4" unit="%" delta="-0.5pt" deltaDir="down" accent="var(--ok)" />
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <h3 className="card-title">توزيع الباقات</h3>
+        </div>
+        <table className="tbl">
+          <thead>
+            <tr>
+              <th>الباقة</th>
+              <th>السعر (ر.ع)</th>
+              <th>المشتركين</th>
+              <th>إجمالي الإيراد</th>
+              <th>الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {plans.map(p => (
+              <tr key={p.id}>
+                <td><strong>{p.name}</strong></td>
+                <td className="t-mono">{p.price}</td>
+                <td className="t-mono">{p.users}</td>
+                <td className="t-mono">{p.users * p.price}</td>
+                <td><window.UI.StatusBadge status="نشط" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
 window.AdminHome = AdminHome;
+window.BillingAdminPage = BillingAdminPage;

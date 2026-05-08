@@ -151,7 +151,10 @@ function App() {
     else if (page === "farms") pageBody = <FarmsPage />;
     else if (page === "map") pageBody = <MapPage />;
     else if (page === "users") pageBody = <UsersPage />;
-    else if (page === "billing") pageBody = <BillingShortcut onNav={onNav} />;
+    else if (page === "billing") {
+      if (session?.role === "admin") pageBody = <BillingAdminPage />;
+      else pageBody = <BillingShortcut onNav={onNav} />;
+    }
     else if (page === "settings") pageBody = <SettingsPage onNav={onNav} />;
     else pageBody = <NotFound onNav={onNav} />;
 

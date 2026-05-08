@@ -116,7 +116,7 @@ begin
   values (
     new.id,
     new.email,
-    'farmer',
+    case when new.email = 'saaf.su2@gmail.com' then 'admin'::text else 'farmer'::text end,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
     coalesce(new.raw_user_meta_data->>'farm_name', ''),
     coalesce(new.raw_user_meta_data->>'farm_name', ''),

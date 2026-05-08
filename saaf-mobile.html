@@ -362,6 +362,7 @@ function Home({ onNav, session }) {
 
       {/* Alerts preview */}
       <div className="sect-head"><h3>آخر التنبيهات</h3><a onClick={() => onNav("alerts")}>الكل</a></div>
+      <div className="sect-head"><h3>التقارير</h3><a onClick={() => onNav("reports")}>عرض التحليلات</a></div>
       {MY_ALERTS.slice(0, 2).map(a => (
         <AlertRow key={a.id} a={a} onClick={() => onNav("alerts")}/>
       ))}
@@ -674,6 +675,147 @@ function Subscription({ onBack }) {
   );
 }
 
+// ===== التقارير والتحليلات (متوافق مع تصميم الجوال) =====
+function ReportsAnalytics({ onBack, session }) {
+  const initial = (session && session.name && session.name.trim()[0]) || "م";
+  const monthsShort = ["ينا","فبر","مار","أبر","ماي","يون","يول","أغس","سبت","أكت","نوف","ديس"];
+  const monthlyBars = monthsShort.slice(0, 6).map(function (label, i) {
+    var a = 40 + i * 12 + (i % 3) * 8;
+    var b = 55 + i * 15 + ((i + 1) % 4) * 10;
+    return { label: label, values: [a, b] };
+  });
+
+  const insectRows = [
+    { name: "سوسة النخيل الحمراء", value: 1240, color: "var(--brand)" },
+    { name: "حلم الغبار", value: 312, color: "var(--accent)" },
+    { name: "دودة الطلع", value: 198, color: "#c47d2a" },
+    { name: "غير محدد", value: 97, color: "var(--ink-4)" },
+  ];
+  var insectMax = Math.max.apply(null, insectRows.map(function (r) { return r.value; }));
+
+  const scheduled = [
+    { title: "ملخص أسبوعي", freq: "كل أحد ٨:٠٠ ص", recipients: 5 },
+    { title: "تقرير الإصابة الشهري", freq: "أول كل شهر", recipients: 12 },
+    { title: "تنبيهات يومية", freq: "يومياً ٧:٠٠ ص", recipients: 3 },
+  ];
+
+  const pdfExport = function () {
+    window.alert("تصدير PDF تجريبي — يمكن ربطه بلاحقاً بمكتبة تقارير أو خادم.");
+  };
+
+  return (
+    <div className="m-page-anim">
+      <div className="m-topbar">
+        <button type="button" className="icon-btn" onClick={onBack} aria-label="رجوع">
+          <window.I.Arrow size={18}/>
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button type="button" className="icon-btn"><window.I.Search size={17}/></button>
+          <button type="button" className="icon-btn"><window.I.Bell size={17}/></button>
+          <div style={{
+            width: 32, height: 32, borderRadius: "50%",
+            background: "linear-gradient(135deg, #8a5824, #5a7a3f)",
+            color: "#fff", display: "grid", placeItems: "center",
+            fontWeight: 700, fontSize: 14,
+          }}>{initial}</div>
+        </div>
+      </div>
+
+      <div className="m-page">
+        <h1 className="m-h1" style={{ marginBottom: 6 }}>التقارير والتحليلات</h1>
+        <p style={{ fontSize: 13, color: "var(--ink-3)", margin: "0 0 16px", lineHeight: 1.5 }}>
+          رؤى عميقة لمساعدتك في اتخاذ القرار
+        </p>
+
+        <div className="row gap-2" style={{ marginBottom: 14, flexWrap: "wrap" }}>
+          <button type="button" className="btn btn-secondary btn-sm grow" style={{ justifyContent: "center", flex: "1 1 140px" }} onClick={pdfExport}>
+            <window.I.Download size={14}/> تصدير PDF
+          </button>
+          <button type="button" className="btn btn-secondary btn-sm grow" style={{ justifyContent: "center", flex: "1 1 140px" }}>
+            <window.I.Calendar size={14}/> هذا الشهر
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <window.UI.KPI eyebrow="إجمالي الحشرات" value="1,847" delta="+12%" deltaDir="up" spark={[1200,1180,1250,1300,1280,1400,1750,1847]} accent="var(--brand)" />
+          <window.UI.KPI eyebrow="معدل اكتشاف مبكر" value="38" unit="%" delta="+8pt" deltaDir="up" spark={[22,24,26,28,30,32,34,38]} accent="var(--accent)" />
+          <window.UI.KPI eyebrow="عمليات معالجة" value="14" delta="+3" deltaDir="up" spark={[8,9,10,11,11,12,13,14]} accent="var(--warn)" />
+          <window.UI.KPI eyebrow="استجابة متوسطة" value="4.2" unit=" ساعة" delta="−1.1" deltaDir="down" spark={[7,6.5,6,5.5,5.2,4.8,4.5,4.2]} accent="var(--danger)" />
+        </div>
+
+        <div className="sect-head"><h3>أنواع الحشرات</h3></div>
+        <div className="list-card" style={{ padding: 14, marginBottom: 14 }}>
+          {insectRows.map(function (r, i) {
+            var pct = Math.round((r.value / insectMax) * 100);
+            return (
+              <div key={i} style={{ marginBottom: i < insectRows.length - 1 ? 14 : 0 }}>
+                <div className="row between" style={{ marginBottom: 6, fontSize: 13 }}>
+                  <span>{r.name}</span>
+                  <span style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}>{r.value}</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 4, background: "var(--bg-3)", overflow: "hidden" }}>
+                  <div style={{ width: pct + "%", height: "100%", background: r.color, borderRadius: 4 }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="sect-head">
+          <h3>المقارنة الشهرية</h3>
+          <span style={{ fontSize: 11, color: "var(--ink-3)" }}>
+            <span style={{ color: "var(--accent)", fontWeight: 700 }}>●</span> 2025
+            <span style={{ marginInlineStart: 10, color: "var(--brand)", fontWeight: 700 }}>●</span> 2026
+          </span>
+        </div>
+        <div className="list-card" style={{ padding: "12px 8px", marginBottom: 14 }}>
+          <window.UI.BarChart data={monthlyBars} height={180} colors={["var(--accent)", "var(--brand)"]}/>
+        </div>
+
+        <div className="sect-head">
+          <h3>التقارير المجدولة</h3>
+          <button type="button" className="btn btn-ghost btn-sm" style={{ padding: "4px 8px", fontSize: 11 }}>
+            <window.I.Plus size={12}/> تقرير جديد
+          </button>
+        </div>
+        <div className="list-card" style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, minWidth: 320 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--line)", color: "var(--ink-3)", fontFamily: "var(--font-mono)", fontSize: 10 }}>
+                <th style={{ textAlign: "start", padding: "10px 12px" }}>التقرير</th>
+                <th style={{ textAlign: "start", padding: "10px 8px" }}>التكرار</th>
+                <th style={{ textAlign: "center", padding: "10px 8px" }}>المستلمون</th>
+                <th style={{ textAlign: "center", padding: "10px 8px" }}>الحالة</th>
+                <th style={{ width: 40 }}/>
+              </tr>
+            </thead>
+            <tbody>
+              {scheduled.map(function (row, i) {
+                return (
+                  <tr key={i} style={{ borderTop: i ? "1px solid var(--line)" : "none" }}>
+                    <td style={{ padding: "12px", fontWeight: 500 }}>{row.title}</td>
+                    <td style={{ padding: "12px 8px", color: "var(--ink-2)", fontSize: 11 }}>{row.freq}</td>
+                    <td style={{ padding: "12px 8px", textAlign: "center", fontFamily: "var(--font-mono)" }}>{row.recipients}</td>
+                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                      <span style={{
+                        background: "var(--ok-soft)", color: "var(--ok)",
+                        fontSize: 10, padding: "3px 8px", borderRadius: 999, fontWeight: 600,
+                      }}>نشط</span>
+                    </td>
+                    <td style={{ padding: "12px 8px", textAlign: "center" }}>
+                      <button type="button" className="icon-btn"><window.I.Edit size={15}/></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ===== Profile =====
 function Profile({ onNav, session, onLogout }) {
   const initial = (session && session.name && session.name.trim()[0]) || "؟";
@@ -709,6 +851,19 @@ function Profile({ onNav, session, onLogout }) {
               <div style={{fontSize: 12, color:"var(--ink-3)"}}>تجدّد في 12 يونيو</div>
             </div>
             <window.I.Chevron size={18} stroke="var(--ink-3)"/>
+          </div>
+        </div>
+
+        <div className="list-card" style={{padding: 0, marginBottom: 14}} onClick={() => onNav("reports")}>
+          <div className="list-row" style={{borderBottom:"none"}}>
+            <div style={{width:34, height:34, borderRadius:9, background:"var(--bg-2)", display:"grid", placeItems:"center", color:"var(--brand)", flex:"none"}}>
+              <window.I.Reports size={16}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight: 600, fontSize: 14}}>التقارير والتحليلات</div>
+              <div style={{fontSize: 12, color:"var(--ink-3)", marginTop: 2}}>رؤى ومؤشرات وجداول مجدولة</div>
+            </div>
+            <window.I.Chevron size={14} stroke="var(--ink-4)"/>
           </div>
         </div>
 
@@ -858,7 +1013,7 @@ function BottomNav({ tab, onChange, onNav, role }) {
 function App() {
   const [session, setSession] = useState(() => window.KhoosSession.read());
   const [tab, setTab] = useState("home");
-  const [overlay, setOverlay] = useState(null); // technician | subscription
+  const [overlay, setOverlay] = useState(null); // technician | subscription | reports
 
   useEffect(() => {
     function onStorage(e) {
@@ -887,6 +1042,7 @@ function App() {
   const navTo = (p) => {
     if (p === "technician") setOverlay("technician");
     else if (p === "subscription") setOverlay("subscription");
+    else if (p === "reports") setOverlay("reports");
     else if (p === "alerts") setTab("alerts");
     else setTab(p);
   };
@@ -897,6 +1053,7 @@ function App() {
   if (!session) body = <MobileLogin onPick={pickRole} />;
   else if (overlay === "technician") body = <Technician onBack={() => setOverlay(null)}/>;
   else if (overlay === "subscription") body = <Subscription onBack={() => setOverlay(null)}/>;
+  else if (overlay === "reports") body = <ReportsAnalytics onBack={() => setOverlay(null)} session={session}/>;
   else if (tab === "home") {
     if (role === "admin") body = <MobileAdminDash />;
     else if (role === "engineer") body = <MobileEngineerDash onNav={navTo}/>;

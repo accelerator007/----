@@ -1,15 +1,6 @@
-// جلسة محليّة (بدون خادم) لتمييز الأدوار: admin · farmer · engineer
+// صلاحيات الصفحات — الجلسة تأتي من Supabase عبر window.KhoosAuth (khoos-bootstrap.mjs)
 
 (function () {
-  var KEY = "khoos_session_v1";
-
-  function inferRole(email) {
-    var e = String(email || "").toLowerCase().trim();
-    if (e.indexOf("admin@") === 0 || e.indexOf("مدير@") === 0) return "admin";
-    if (e.indexOf("engineer@") === 0 || e.indexOf("مهندس@") === 0) return "engineer";
-    return "farmer";
-  }
-
   var PAGES = {
     admin: [
       "admin-home",
@@ -29,61 +20,21 @@
   };
 
   window.KhoosSession = {
-    STORAGE_KEY: KEY,
+    STORAGE_KEY: "khoos_session_v1",
 
     read: function () {
-      try {
-        var raw = localStorage.getItem(KEY);
-        if (!raw) return null;
-        var s = JSON.parse(raw);
-        if (!s || !s.role || !s.email) return null;
-        if (!PAGES[s.role]) return null;
-        return s;
-      } catch (err) {
-        return null;
-      }
+      return window.KhoosAuth && typeof window.KhoosAuth.getProfile === "function"
+        ? window.KhoosAuth.getProfile()
+        : null;
     },
 
-    save: function (s) {
-      localStorage.setItem(
-        KEY,
-        JSON.stringify({
-          role: s.role,
-          email: s.email,
-          name: s.name || "",
-          subtitle: s.subtitle || "",
-          at: Date.now(),
-        })
-      );
+    save: function () {
+      /* Deprecated — الجلسة من Supabase Auth */
     },
 
     clear: function () {
-      localStorage.removeItem(KEY);
-    },
-
-    inferRole: inferRole,
-
-    demoProfile: function (role, email) {
-      var em =
-        email ||
-        (role === "admin"
-          ? "admin@demo.khoos.sa"
-          : role === "engineer"
-            ? "engineer@demo.khoos.sa"
-            : "farmer@demo.khoos.sa");
-      var r = role === "admin" || role === "engineer" || role === "farmer" ? role : inferRole(em);
-      var profiles = {
-        admin: { name: "مدير النظام", subtitle: "صلاحيات كاملة · الأدمن" },
-        engineer: { name: "خالد العتيبي", subtitle: "مهندس ميداني · الفريق الفني" },
-        farmer: { name: "عبدالله الراشد", subtitle: "مزرعة الواحة · مالك" },
-      };
-      var p = profiles[r];
-      return {
-        role: r,
-        email: em,
-        name: p.name,
-        subtitle: p.subtitle,
-      };
+      if (window.KhoosAuth && window.KhoosAuth.signOut) return window.KhoosAuth.signOut();
+      return Promise.resolve();
     },
 
     defaultLandingPage: function (role) {

@@ -4,8 +4,32 @@ function TrapsPage({ onNav, onSelectTrap }) {
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState("all");
   const [view, setView] = React.useState("table");
+  const [, setTick] = React.useState(0);
 
-  const filtered = window.DATA.TRAPS_DATA.filter(t => {
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+
+  var TD = window.DATA && window.DATA.TRAPS_DATA ? window.DATA.TRAPS_DATA : [];
+  var nAlerts = TD.filter(function (t) {
+    return ["تنبيه", "حرج", "بطارية ضعيفة"].indexOf(t.status) !== -1;
+  }).length;
+  var nOk = TD.filter(function (t) {
+    return t.status === "نشط";
+  }).length;
+  var nOff = TD.filter(function (t) {
+    return t.status === "صيانة";
+  }).length;
+
+  const filtered = TD.filter(t => {
     const q = search.trim();
     if (q && !(t.name.includes(q) || t.id.includes(q) || t.farm.includes(q))) return false;
     if (filter === "alerts" && !["تنبيه","حرج","بطارية ضعيفة"].includes(t.status)) return false;
@@ -19,7 +43,7 @@ function TrapsPage({ onNav, onSelectTrap }) {
       <div className="page-head">
         <div>
           <h1 className="page-title">المصايد</h1>
-          <p className="page-sub">{window.DATA.TRAPS_DATA.length} مصيدة موزّعة على 3 مزارع</p>
+          <p className="page-sub">{TD.length} مصيدة · بيانات من Supabase</p>
         </div>
         <div className="row gap-2">
           <button className="btn btn-secondary btn-sm"><window.I.Download size={14}/>تصدير</button>
@@ -35,7 +59,7 @@ function TrapsPage({ onNav, onSelectTrap }) {
           </div>
         </div>
         <div className="seg">
-          {[["all","الكل",window.DATA.TRAPS_DATA.length],["alerts","تنبيه",4],["ok","نشط",3],["off","صيانة",1]].map(([v,l,n]) => (
+          {[["all","الكل",TD.length],["alerts","تنبيه",nAlerts],["ok","نشط",nOk],["off","صيانة",nOff]].map(([v,l,n]) => (
             <button key={v} className={filter === v ? "active" : ""} onClick={() => setFilter(v)}>{l} <span className="t-mono" style={{opacity:.6, marginInlineStart:4}}>{n}</span></button>
           ))}
         </div>
@@ -120,7 +144,7 @@ function TrapsPage({ onNav, onSelectTrap }) {
         )}
 
         {filtered.length > 0 && <div className="row between" style={{padding: "12px 18px", borderTop: "1px solid var(--line)", fontSize: 12, color:"var(--ink-3)"}}>
-          <div>عرض {filtered.length} من {window.DATA.TRAPS_DATA.length}</div>
+          <div>عرض {filtered.length} من {TD.length}</div>
           <div className="row gap-2">
             <button className="btn btn-ghost btn-sm">السابق</button>
             <button className="btn btn-secondary btn-sm">1</button>
@@ -231,12 +255,29 @@ function TrapDrawer({ trap, onClose }) {
 // ===== Alerts Page =====
 function AlertsPage({ onNav }) {
   const [tab, setTab] = React.useState("open");
+  const [, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+
+  var AD = window.DATA && window.DATA.ALERTS_DATA ? window.DATA.ALERTS_DATA : [];
+  var nOpen = AD.length;
+
   return (
     <>
       <div className="page-head">
         <div>
           <h1 className="page-title">التنبيهات</h1>
-          <p className="page-sub">3 تنبيهات مفتوحة · 12 محلولة هذا الأسبوع</p>
+          <p className="page-sub">{nOpen} تنبيه من قاعدة البيانات</p>
         </div>
         <div className="row gap-2">
           <button className="btn btn-secondary btn-sm">إعدادات العتبات</button>
@@ -245,7 +286,7 @@ function AlertsPage({ onNav }) {
       </div>
 
       <div className="tabs">
-        {[["open","المفتوحة",3],["resolved","المحلولة",12],["all","الكل",47]].map(([v,l,n]) => (
+        {[["open","المفتوحة",nOpen],["resolved","المحلولة",0],["all","الكل",nOpen]].map(([v,l,n]) => (
           <div key={v} className={"tab " + (tab === v ? "active" : "")} onClick={() => setTab(v)}>
             {l} <span className="t-mono" style={{opacity:.6, marginInlineStart:4}}>{n}</span>
           </div>
@@ -253,7 +294,7 @@ function AlertsPage({ onNav }) {
       </div>
 
       <div className="col gap-3">
-        {window.DATA.ALERTS_DATA.map(a => {
+        {AD.map(a => {
           const sev = a.sev === "critical" ? {c: "var(--danger)", bg: "var(--danger-soft)", l: "حرج"} :
                       a.sev === "warn"     ? {c: "var(--warn)",   bg: "var(--warn-soft)",   l: "تنبيه"} :
                                               {c: "var(--info)",   bg: "var(--info-soft)",   l: "معلومة"};
@@ -288,6 +329,20 @@ function AlertsPage({ onNav }) {
 
 // ===== Map Page =====
 function MapPage() {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+  var TD = window.DATA && window.DATA.TRAPS_DATA ? window.DATA.TRAPS_DATA : [];
+
   return (
     <>
       <div className="page-head">
@@ -311,8 +366,8 @@ function MapPage() {
         <div className="card" style={{display:"flex", flexDirection:"column"}}>
           <div className="card-head"><h3 className="card-title">المصايد الظاهرة</h3></div>
           <div style={{flex:1, overflow:"auto"}}>
-            {window.DATA.TRAPS_DATA.map((t,i) => (
-              <div key={t.id} style={{padding:"10px 14px", borderTop: i? "1px solid var(--line)":"none", display:"flex", gap: 10, alignItems:"center"}}>
+            {TD.map((t,i) => (
+              <div key={t._uuid || t.id} style={{padding:"10px 14px", borderTop: i? "1px solid var(--line)":"none", display:"flex", gap: 10, alignItems:"center"}}>
                 <div style={{
                   width: 24, height: 24, borderRadius: "50%",
                   background: t.status === "حرج" ? "var(--danger)" : t.status === "تنبيه" ? "var(--warn)" : "var(--accent)",
@@ -333,8 +388,19 @@ function MapPage() {
 }
 
 function FieldMap() {
-  // Stylized non-real map: dotted grid + region patches + trap pins
-  const traps = window.DATA.TRAPS_DATA;
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+  var traps = window.DATA && window.DATA.TRAPS_DATA ? window.DATA.TRAPS_DATA : [];
   return (
     <svg viewBox="0 0 800 500" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{display:"block"}}>
       {/* Patchy fields */}
@@ -372,7 +438,7 @@ function FieldMap() {
         const y = 100 + ((i*53) % 320);
         const c = t.status === "حرج" ? "#b54323" : t.status === "تنبيه" ? "#c47d2a" : t.status === "صيانة" ? "#a89776" : "#5a7a3f";
         return (
-          <g key={t.id} style={{cursor:"pointer"}}>
+          <g key={t._uuid || t.id} style={{cursor:"pointer"}}>
             <circle cx={x} cy={y} r="14" fill="#fff" stroke={c} strokeWidth="2"/>
             <text x={x} y={y+4} textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill={c} fontWeight="600">{t.today}</text>
           </g>

@@ -1,6 +1,6 @@
 // Landing page — sales/marketing site for خوص
 
-function Landing({ onNav, variant = "warm", onDemoEnter }) {
+function Landing({ onNav, variant = "warm" }) {
   return (
     <div style={{background: "var(--bg)", minHeight: "100vh"}}>
       {/* Nav */}
@@ -36,16 +36,10 @@ function Landing({ onNav, variant = "warm", onDemoEnter }) {
             جرّب 14 يوم مجاناً
             <window.I.Arrow size={14} style={{transform:"scaleX(-1)"}}/>
           </button>
-          <button className="btn btn-secondary btn-lg" onClick={() => onDemoEnter && onDemoEnter("farmer")}>
-            <window.I.Eye size={14}/>
-            شاهد الديمو (مزارع)
+          <button className="btn btn-secondary btn-lg" onClick={() => onNav("login")}>
+            <window.I.Arrow size={14} style={{transform:"scaleX(-1)"}}/>
+            تسجيل الدخول
           </button>
-        </div>
-        <div className="row gap-2 center" style={{marginTop: 14, flexWrap: "wrap"}}>
-          <span style={{fontSize: 12, color: "var(--ink-3)"}}>ديمو بالأدوار:</span>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDemoEnter && onDemoEnter("farmer")}>مزارع</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDemoEnter && onDemoEnter("engineer")}>مهندس</button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onDemoEnter && onDemoEnter("admin")}>أدمن</button>
         </div>
         <div style={{marginTop: 18, fontSize: 12, color: "var(--ink-3)"}}>
           بدون بطاقة ائتمان · إعداد في 5 دقائق · يدعم العربية والإنجليزية

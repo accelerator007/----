@@ -315,11 +315,27 @@ function LangTab() {
 // ===== Users & roles =====
 function UsersPage() {
   const [drawer, setDrawer] = React.useState(false);
+  const [, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+
+  var UD = window.DATA && window.DATA.USERS_DATA ? window.DATA.USERS_DATA : [];
+
   return <>
     <div className="page-head">
       <div>
         <h1 className="page-title">المستخدمون والصلاحيّات</h1>
-        <p className="page-sub">{window.DATA.USERS_DATA.length} أعضاء · 4 من أصل 10 مقاعد مستخدمة</p>
+        <p className="page-sub">{UD.length} مستخدم (يظهر لصلاحية الأدمن فقط)</p>
       </div>
       <button className="btn btn-primary btn-sm" onClick={() => setDrawer(true)}><window.I.Plus size={14}/>دعوة عضو</button>
     </div>
@@ -330,8 +346,8 @@ function UsersPage() {
           <tr><th>العضو</th><th>الدور</th><th>المزارع</th><th>آخر نشاط</th><th>الحالة</th><th></th></tr>
         </thead>
         <tbody>
-          {window.DATA.USERS_DATA.map(u => (
-            <tr key={u.id}>
+          {UD.map(u => (
+            <tr key={u._uuid || u.id}>
               <td>
                 <div className="row gap-3">
                   <div style={{
@@ -512,19 +528,39 @@ function ReportsPage() {
 
 // ===== Farms =====
 function FarmsPage() {
+  const [, setTick] = React.useState(0);
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+  var FD = window.DATA && window.DATA.FARMS_DATA ? window.DATA.FARMS_DATA : [];
+  var totalHa = FD.reduce(function (s, f) {
+    return s + (Number(f.hectares) || 0);
+  }, 0);
+  var totalTraps = FD.reduce(function (s, f) {
+    return s + (Number(f.traps) || 0);
+  }, 0);
+
   return <>
     <div className="page-head">
       <div>
         <h1 className="page-title">المزارع</h1>
-        <p className="page-sub">3 مزارع · 39 هكتار · 8 مصايد نشطة</p>
+        <p className="page-sub">{FD.length} مزرعة · {Math.round(totalHa)} هكتار · {totalTraps} مصيدة</p>
       </div>
       <button className="btn btn-primary btn-sm"><window.I.Plus size={14}/>إضافة مزرعة</button>
     </div>
     <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(320px, 1fr))", gap: 14}}>
-      {window.DATA.FARMS_DATA.map(f => {
+      {FD.map(f => {
         const riskColor = f.risk === "high" ? "var(--danger)" : f.risk === "med" ? "var(--warn)" : "var(--accent)";
         return (
-          <div key={f.id} className="card" style={{overflow:"hidden"}}>
+          <div key={f._uuid || f.id} className="card" style={{overflow:"hidden"}}>
             <div style={{
               height: 90,
               background: `linear-gradient(135deg, var(--accent-soft), var(--brand-soft))`,

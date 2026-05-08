@@ -1,4 +1,4 @@
-// Root App: أدوار (أدمن · مزارع · مهندس) + تنقّل + لوحة التعديلات
+// Root App — مصادقة Supabase + أدوار من جدول profiles
 
 const PUBLIC_PAGES = ["landing", "login", "signup", "forgot", "404"];
 
@@ -26,11 +26,9 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 function App() {
-  const [session, setSession] = React.useState(() => window.KhoosSession.read());
-  const [page, setPage] = React.useState(() => {
-    var s = window.KhoosSession.read();
-    return s ? window.KhoosSession.defaultLandingPage(s.role) : "landing";
-  });
+  const [authReady, setAuthReady] = React.useState(false);
+  const [session, setSession] = React.useState(null);
+  const [page, setPage] = React.useState("landing");
   const [selectedTrap, setSelectedTrap] = React.useState(null);
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
@@ -57,25 +55,37 @@ function App() {
     }
   }, [t.themeMode, t.primaryColor, t.accentColor]);
 
-  const loginOk = (profile) => {
-    setSession(profile);
-    setPage(window.KhoosSession.defaultLandingPage(profile.role));
-    window.scrollTo({ top: 0, behavior: "instant" });
-  };
+  React.useEffect(() => {
+    if (!window.KhoosAuth || typeof window.KhoosAuth.init !== "function") {
+      setAuthReady(true);
+      return;
+    }
+    window.KhoosAuth.init(function (profile) {
+      setSession(profile);
+      setAuthReady(true);
+      if (profile && window.KhoosData) window.KhoosData.refreshAll();
+      else if (window.KhoosData) window.KhoosData.refreshAll();
+    });
+  }, []);
 
-  const logout = () => {
-    window.KhoosSession.clear();
+  React.useEffect(() => {
+    if (!session) return;
+    if (page !== "login" && page !== "signup") return;
+    setPage(window.KhoosSession.defaultLandingPage(session.role));
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [session, page]);
+
+  React.useEffect(() => {
+    if (!authReady || !session) return;
+    if (page !== "landing") return;
+    setPage(window.KhoosSession.defaultLandingPage(session.role));
+  }, [authReady, session, page]);
+
+  const logout = async () => {
+    await window.KhoosAuth.signOut();
     setSession(null);
     setPage("landing");
     setSelectedTrap(null);
-    window.scrollTo({ top: 0, behavior: "instant" });
-  };
-
-  const demoEnter = (role) => {
-    var profile = window.KhoosSession.demoProfile(role);
-    window.KhoosSession.save(profile);
-    setSession(profile);
-    setPage(window.KhoosSession.defaultLandingPage(profile.role));
     window.scrollTo({ top: 0, behavior: "instant" });
   };
 
@@ -93,6 +103,8 @@ function App() {
     setPage(p);
     setSelectedTrap(null);
     window.scrollTo({ top: 0, behavior: "instant" });
+    if (s && window.KhoosData && ["dashboard", "traps", "alerts", "farms", "users"].indexOf(p) !== -1)
+      window.KhoosData.refreshAll();
   };
 
   const isShell = SHELL_PAGES.indexOf(page) !== -1;
@@ -114,18 +126,25 @@ function App() {
     return map[p] || [p];
   };
 
+  if (!authReady) {
+    return (
+      <div style={{ minHeight: "60vh", display: "grid", placeItems: "center", color: "var(--ink-3)" }}>
+        جارٍ تحميل الجلسة…
+      </div>
+    );
+  }
+
   var content;
-  if (page === "landing")
-    content = <Landing onNav={onNav} variant={t.landingVariant} onDemoEnter={demoEnter} />;
-  else if (page === "login") content = <Login onNav={onNav} onLoginSuccess={loginOk} />;
-  else if (page === "signup") content = <Signup onNav={onNav} onLoginSuccess={loginOk} />;
+  if (page === "landing") content = <Landing onNav={onNav} variant={t.landingVariant} />;
+  else if (page === "login") content = <Login onNav={onNav} />;
+  else if (page === "signup") content = <Signup onNav={onNav} />;
   else if (page === "forgot") content = <Forgot onNav={onNav} />;
   else if (page === "404") content = <NotFound onNav={onNav} />;
   else if (isShell) {
     var pageBody;
     if (page === "admin-home") pageBody = <AdminHome onNav={onNav} />;
     else if (page === "engineer-home") pageBody = <EngineerHome onNav={onNav} />;
-    else if (page === "dashboard") pageBody = <Dashboard onNav={onNav} dashVariant={t.dashVariant} />;
+    else if (page === "dashboard") pageBody = <Dashboard onNav={onNav} dashVariant={t.dashVariant} session={session} />;
     else if (page === "reports") pageBody = <ReportsPage />;
     else if (page === "traps") pageBody = <TrapsPage onNav={onNav} onSelectTrap={setSelectedTrap} />;
     else if (page === "alerts") pageBody = <AlertsPage onNav={onNav} />;
@@ -152,6 +171,19 @@ function App() {
 
   return (
     <div data-density={t.density}>
+      {!window.KhoosAuth?.configured && (
+        <div
+          style={{
+            background: "var(--danger-soft)",
+            borderBottom: "1px solid var(--danger)",
+            padding: "10px 16px",
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          Supabase غير مُعدّ: افتح <span className="t-mono">supabase-config.js</span> وأضف العنوان ومفتاح anon.
+        </div>
+      )}
       {content}
       {selectedTrap && <TrapDrawer trap={selectedTrap} onClose={() => setSelectedTrap(null)} />}
       {notifOpen && (

@@ -1,0 +1,8 @@
+{
+  "name": "khoos-web",
+  "private": true,
+  "scripts": {
+    "build:config": "node scripts/write-supabase-config.mjs",
+    "vercel-build": "npm run build:config"
+  }
+}

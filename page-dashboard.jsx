@@ -1,51 +1,46 @@
-// Mock data + the main Dashboard page
+// لوحة التحكم — بيانات من Supabase عبر window.DATA (KhoosData.refreshAll)
 
-const TRAPS_DATA = [
-  { id:"TRAP-001", name:"البئر الشرقي", farm:"الواحة", region:"القصيم", status:"حرج",   today: 28, week: 142, battery: 84, signal: 92, lastSeen:"قبل 4 دقائق", lat: 26.31, lng: 43.97 },
-  { id:"TRAP-002", name:"البوّابة الشماليّة", farm:"الواحة", region:"القصيم", status:"تنبيه", today: 14, week: 73,  battery: 67, signal: 88, lastSeen:"قبل 8 دقائق", lat: 26.32, lng: 43.96 },
-  { id:"TRAP-003", name:"الممر الأوسط",  farm:"الواحة", region:"القصيم", status:"نشط",   today: 4,  week: 22,  battery: 91, signal: 95, lastSeen:"قبل 2 دقيقة", lat: 26.31, lng: 43.98 },
-  { id:"TRAP-004", name:"خزّان المياه",  farm:"الواحة", region:"القصيم", status:"بطارية ضعيفة", today: 7, week: 31, battery: 14, signal: 76, lastSeen:"قبل 12 دقيقة", lat: 26.30, lng: 43.97 },
-  { id:"TRAP-005", name:"الحقل الجنوبي", farm:"النور",   region:"الأحساء", status:"نشط",   today: 2,  week: 12,  battery: 78, signal: 81, lastSeen:"قبل 6 دقائق", lat: 25.43, lng: 49.61 },
-  { id:"TRAP-006", name:"المدخل الشرقي", farm:"النور",   region:"الأحساء", status:"صيانة", today: 0,  week: 0,   battery: 0,  signal: 0,  lastSeen:"قبل 3 أيام", lat: 25.44, lng: 49.62 },
-  { id:"TRAP-007", name:"حقل الطاهر",   farm:"السلام",  region:"المدينة", status:"نشط",  today: 6,  week: 28,  battery: 88, signal: 90, lastSeen:"قبل 5 دقائق", lat: 24.47, lng: 39.61 },
-  { id:"TRAP-008", name:"حقل الزراعي",  farm:"السلام",  region:"المدينة", status:"تنبيه", today: 11, week: 58,  battery: 73, signal: 84, lastSeen:"قبل 7 دقائق", lat: 24.46, lng: 39.62 },
-];
-
-const ALERTS_DATA = [
-  { id:1, sev:"critical", trap:"TRAP-001", msg:"تجاوز عتبة الإصابة الحرجة (28 حشرة/يوم)", time:"قبل 14 دقيقة", farm:"الواحة" },
-  { id:2, sev:"warn", trap:"TRAP-008", msg:"ارتفاع ملحوظ في عدد الحشرات", time:"قبل 1 ساعة", farm:"السلام" },
-  { id:3, sev:"warn", trap:"TRAP-004", msg:"بطارية منخفضة (14%)", time:"قبل 2 ساعة", farm:"الواحة" },
-  { id:4, sev:"info", trap:"TRAP-006", msg:"الجهاز خارج التغطية", time:"قبل 3 أيام", farm:"النور" },
-];
-
-const FARMS_DATA = [
-  { id:"FARM-01", name:"مزرعة الواحة", region:"القصيم", traps: 4, hectares: 18, owner:"عبدالله الراشد", risk:"high" },
-  { id:"FARM-02", name:"مزرعة النور",  region:"الأحساء", traps: 2, hectares: 9,  owner:"عبدالله الراشد", risk:"low" },
-  { id:"FARM-03", name:"مزرعة السلام", region:"المدينة", traps: 2, hectares: 12, owner:"شريك", risk:"med" },
-];
-
-const USERS_DATA = [
-  { id:1, name:"عبدالله الراشد", role:"مالك",        email:"abdullah@nakhl.sa", last:"قبل دقيقتين", active: true },
-  { id:2, name:"خالد العتيبي",   role:"مهندس زراعي", email:"khaled@nakhl.sa",   last:"قبل ساعة", active: true },
-  { id:3, name:"سارة الفهد",     role:"محلّل بيانات",  email:"sara@nakhl.sa",     last:"قبل يوم",  active: true },
-  { id:4, name:"يوسف الحربي",    role:"فنّي ميداني",   email:"yousef@nakhl.sa",   last:"قبل 4 أيام", active: false },
-];
-
-window.DATA = { TRAPS_DATA, ALERTS_DATA, FARMS_DATA, USERS_DATA };
+if (!window.DATA) {
+  window.DATA = { TRAPS_DATA: [], ALERTS_DATA: [], FARMS_DATA: [], USERS_DATA: [] };
+}
 
 // =================================================================
 // Dashboard
 // =================================================================
-function Dashboard({ onNav, dashVariant = "executive" }) {
+function Dashboard({ onNav, dashVariant = "executive", session }) {
   const [range, setRange] = React.useState("7d");
+  const [, setTick] = React.useState(0);
+
+  React.useEffect(() => {
+    var fn = function () {
+      setTick(function (x) {
+        return x + 1;
+      });
+    };
+    window.addEventListener("khoos-data", fn);
+    return function () {
+      window.removeEventListener("khoos-data", fn);
+    };
+  }, []);
+
+  var TRAPS_DATA = window.DATA.TRAPS_DATA || [];
+  var ALERTS_DATA = window.DATA.ALERTS_DATA || [];
+  var FARMS_DATA = window.DATA.FARMS_DATA || [];
+  var greet = session && session.name ? session.name : "ضيف";
+  var nt = TRAPS_DATA.length;
+  var nf = FARMS_DATA.length;
 
   return (
     <>
       <div className="page-head">
         <div>
-          <div className="t-eyebrow">صباح الخير، عبدالله</div>
+          <div className="t-eyebrow">صباح الخير، {greet}</div>
           <h1 className="page-title">لوحة التحكّم</h1>
-          <p className="page-sub">اليوم {new Date().toLocaleDateString("ar-SA", {day:"numeric", month:"long", year:"numeric"})} · 8 مصايد · 3 مزارع</p>
+          <p className="page-sub">
+            اليوم {new Date().toLocaleDateString("ar-SA", { day: "numeric", month: "long", year: "numeric" })} · {nt} مصيدة
+            {nf ? ` · ${nf} مزرعة` : ""}
+            {!nt && <span style={{ color: "var(--warn)", marginInlineStart: 8 }}>— لا توجد مصايد بعد؛ أضف بيانات من Supabase</span>}
+          </p>
         </div>
         <div className="row gap-2">
           <div className="seg">

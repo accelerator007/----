@@ -50,55 +50,40 @@ function AuthArt({ title, sub }) {
   );
 }
 
-function Login({ onNav, onLoginSuccess }) {
-  const [email, setEmail] = React.useState("farmer@demo.khoos.sa");
+function Login({ onNav }) {
+  const [email, setEmail] = React.useState("");
   const [pw, setPw] = React.useState("");
   const [show, setShow] = React.useState(false);
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
 
-  const finishLogin = (profile) => {
-    window.KhoosSession.save(profile);
-    onLoginSuccess(profile);
-  };
-
   const submit = (e) => {
     e?.preventDefault();
     if (!email.includes("@")) { setErr("بريد غير صالح"); return; }
+    if (!pw || pw.length < 6) { setErr("كلمة المرور قصيرة جداً (٦ أحرف على الأقل)"); return; }
     setErr(""); setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      var role = window.KhoosSession.inferRole(email);
-      var profile = window.KhoosSession.demoProfile(role, email);
-      finishLogin(profile);
-    }, 500);
-  };
-
-  const quickDemo = (role) => {
-    var profile = window.KhoosSession.demoProfile(role);
-    finishLogin(profile);
+    window.KhoosAuth.signIn(email, pw)
+      .then(function () { setLoading(false); })
+      .catch(function (e) {
+        setLoading(false);
+        setErr(e.message || String(e));
+      });
   };
 
   return (
     <div className="auth-wrap">
-      <AuthArt title="تابع نخيلك من أيّ مكان" sub="سجّل دخولك لمتابعة قراءات المصايد، استلام التنبيهات، وإدارة فريقك الميداني."/>
+      <AuthArt title="تابع نخيلك من أيّ مكان" sub="سجّل دخولك عبر Supabase — البيانات فعلية من قاعدتك."/>
       <div className="auth-form-wrap">
         <form className="auth-form" onSubmit={submit}>
           <div className="t-eyebrow">تسجيل الدخول</div>
           <h1 className="t-display" style={{fontSize: 28, margin: "8px 0 6px"}}>أهلاً بعودتك</h1>
-          <p className="t-muted" style={{fontSize: 13, margin: "0 0 22px"}}>أدخل بريدك للدخول التجريبي (كلمة المرور غير مفعّلة بعد — واجهة فقط).</p>
+          <p className="t-muted" style={{fontSize: 13, margin: "0 0 22px"}}>البريد وكلمة المرور اللذان سجّلت بهما في المنصّة.</p>
 
-          <div className="card card-pad" style={{background:"var(--bg-2)", marginBottom: 14, padding: "12px 14px"}}>
-            <div style={{fontSize: 11, color: "var(--ink-3)", marginBottom: 8}}>دخول سريع بالدور:</div>
-            <div className="row gap-2" style={{flexWrap: "wrap"}}>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => quickDemo("farmer")}>مزارع</button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => quickDemo("engineer")}>مهندس</button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => quickDemo("admin")}>أدمن</button>
+          {!window.KhoosAuth?.configured && (
+            <div className="card card-pad" style={{borderColor:"var(--danger)", marginBottom: 14, fontSize: 13}}>
+              لم يُضبط Supabase: عدّل ملف <span className="t-mono">supabase-config.js</span> (العنوان + anon key).
             </div>
-            <div className="hint" style={{marginTop: 8}}>
-              أو اكتب بريداً يبدأ بـ <span className="t-mono">admin@</span> أو <span className="t-mono">engineer@</span> لاختيار الدور تلقائياً.
-            </div>
-          </div>
+          )}
 
           <div className="col gap-3">
             <div className="field">
@@ -154,43 +139,60 @@ function Login({ onNav, onLoginSuccess }) {
   );
 }
 
-function Signup({ onNav, onLoginSuccess }) {
+function Signup({ onNav }) {
   const [step, setStep] = React.useState(1);
-  const [data, setData] = React.useState({name:"", email:"", phone:"", pw:"", farm:"", traps: 5});
+  const [data, setData] = React.useState({name:"", email:"", phone:"", pw:"", farm:"", region:"القصيم", traps: 5});
+  const [err, setErr] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [doneMsg, setDoneMsg] = React.useState("");
   const set = (k, v) => setData(d => ({...d, [k]: v}));
 
   return (
     <div className="auth-wrap">
-      <AuthArt title="ابدأ موسمك الزراعي بثقة" sub="14 يوم تجريبيّة، إعداد سريع، وأوّل مصيدة هديّة عند الترقية."/>
+      <AuthArt title="ابدأ موسمك الزراعي بثقة" sub="حساب حقيقي على Supabase — يمكن أن يطلب المزود تأكيد البريد قبل أول دخول."/>
       <div className="auth-form-wrap">
         <form className="auth-form" onSubmit={e => {
           e.preventDefault();
-          if (step < 3) { setStep(step + 1); return; }
-          var profile = window.KhoosSession.demoProfile("farmer", data.email || "farmer@demo.khoos.sa");
-          if (data.name && data.name.trim()) profile.name = data.name.trim();
-          if (data.farm && data.farm.trim()) profile.subtitle = data.farm.trim() + " · مالك";
-          window.KhoosSession.save(profile);
-          onLoginSuccess(profile);
+          setErr("");
+          if (step < 2) { setStep(step + 1); return; }
+          if (!data.email.includes("@")) { setErr("بريد غير صالح"); return; }
+          if (!data.pw || data.pw.length < 8) { setErr("كلمة المرور ٨ أحرف على الأقل"); return; }
+          setLoading(true);
+          window.KhoosAuth.signUp(data.email, data.pw, {
+            full_name: data.name.trim(),
+            farm_name: data.farm.trim(),
+            phone: data.phone.trim(),
+          })
+            .then(function (res) {
+              setLoading(false);
+              if (res.session) setDoneMsg("");
+              else setDoneMsg("تم إنشاء الحساب — تحقّق من بريدك لتأكيد الحساب إن وُجد ذلك في إعدادات المشروع.");
+            })
+            .catch(function (ex) {
+              setLoading(false);
+              setErr(ex.message || String(ex));
+            });
         }}>
           <div className="row gap-2" style={{marginBottom: 18}}>
-            {[1,2,3].map(s => (
+            {[1,2].map(s => (
               <div key={s} style={{
                 flex: 1, height: 4, borderRadius: 2,
                 background: s <= step ? "var(--brand)" : "var(--bg-3)"
               }}/>
             ))}
           </div>
-          <div className="t-eyebrow">الخطوة {step} من 3</div>
+          <div className="t-eyebrow">الخطوة {step} من 2</div>
           <h1 className="t-display" style={{fontSize: 26, margin: "8px 0 6px"}}>
             {step === 1 && "نتعرّف عليك"}
             {step === 2 && "أخبرنا عن مزرعتك"}
-            {step === 3 && "تفعيل الحساب"}
           </h1>
           <p className="t-muted" style={{fontSize: 13, margin: "0 0 22px"}}>
-            {step === 1 && "بياناتك الأساسيّة لإنشاء حسابك."}
-            {step === 2 && "نخصّص لوحة التحكم بناءً على حجم مزرعتك."}
-            {step === 3 && "أرسلنا لك رمزاً للتحقّق على هاتفك."}
+            {step === 1 && "بريد وكلمة مرور تُخزَّن في Supabase Auth."}
+            {step === 2 && "تُحفظ مع ملفك الشخصي لتظهر في المنصّة."}
           </p>
+
+          {err && <div className="card card-pad" style={{borderColor:"var(--danger)", marginBottom: 12, fontSize: 13}}>{err}</div>}
+          {doneMsg && <div className="card card-pad" style={{borderColor:"var(--ok)", marginBottom: 12, fontSize: 13}}>{doneMsg}</div>}
 
           {step === 1 && <div className="col gap-3">
             <div className="field"><label>الاسم الكامل</label><input className="input" value={data.name} onChange={e => set("name", e.target.value)} placeholder="عبدالله الراشد" autoFocus/></div>
@@ -207,7 +209,7 @@ function Signup({ onNav, onLoginSuccess }) {
             <div className="field"><label>اسم المزرعة</label><input className="input" value={data.farm} onChange={e => set("farm", e.target.value)} placeholder="مزرعة الواحة" autoFocus/></div>
             <div className="field">
               <label>المنطقة</label>
-              <select className="select">
+              <select className="select" value={data.region} onChange={e => set("region", e.target.value)}>
                 <option>القصيم</option><option>الأحساء</option><option>المدينة المنوّرة</option><option>تبوك</option><option>أخرى</option>
               </select>
             </div>
@@ -229,29 +231,10 @@ function Signup({ onNav, onLoginSuccess }) {
             </div>
           </div>}
 
-          {step === 3 && <div className="col gap-3">
-            <div className="field">
-              <label>رمز التحقّق</label>
-              <div className="row gap-2" dir="ltr">
-                {[0,1,2,3,4,5].map(i => <input key={i} className="input" maxLength={1} style={{textAlign:"center", fontFamily:"var(--font-mono)", fontSize: 18, fontWeight: 600}} defaultValue={["4","2","8","1","9","3"][i]}/>)}
-              </div>
-              <div className="hint">أُرسل إلى {data.phone || "+966 5x xxx xxxx"} · <a style={{color:"var(--brand)", cursor:"pointer"}}>إعادة الإرسال</a></div>
-            </div>
-            <div className="card card-pad" style={{background:"var(--bg-2)", borderStyle: "dashed"}}>
-              <div className="row gap-3">
-                <window.I.Info size={18} stroke="var(--info)"/>
-                <div>
-                  <div style={{fontWeight: 500, fontSize: 13}}>هديّة الترحيب</div>
-                  <div style={{fontSize: 12, color: "var(--ink-3)"}}>سنرسل لك مصيدة خوص هديّة عند تأكيد أوّل اشتراك.</div>
-                </div>
-              </div>
-            </div>
-          </div>}
-
           <div className="row gap-2" style={{marginTop: 22}}>
             {step > 1 && <button type="button" className="btn btn-ghost" onClick={() => setStep(step-1)}>السابق</button>}
-            <button className="btn btn-primary grow" type="submit" style={{justifyContent:"center"}}>
-              {step < 3 ? "التالي" : "إنشاء الحساب"}
+            <button className="btn btn-primary grow" type="submit" style={{justifyContent:"center"}} disabled={loading}>
+              {loading ? "جارٍ الإنشاء…" : step < 2 ? "التالي" : "إنشاء الحساب"}
               <window.I.Arrow size={14} style={{transform:"scaleX(-1)"}}/>
             </button>
           </div>
@@ -267,11 +250,22 @@ function Signup({ onNav, onLoginSuccess }) {
 
 function Forgot({ onNav }) {
   const [sent, setSent] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [err, setErr] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
   return (
     <div className="auth-wrap">
       <AuthArt title="استعد الوصول لحسابك" sub="أرسل لنا بريدك ونرسل لك رابط إعادة تعيين كلمة المرور."/>
       <div className="auth-form-wrap">
-        <form className="auth-form" onSubmit={e => { e.preventDefault(); setSent(true); }}>
+        <form className="auth-form" onSubmit={e => {
+          e.preventDefault();
+          setErr("");
+          if (!email.includes("@")) { setErr("بريد غير صالح"); return; }
+          setLoading(true);
+          window.KhoosAuth.resetPassword(email)
+            .then(function () { setLoading(false); setSent(true); })
+            .catch(function (ex) { setLoading(false); setErr(ex.message || String(ex)); });
+        }}>
           <a onClick={() => onNav("login")} style={{fontSize: 12, color: "var(--ink-3)", cursor: "pointer", display:"inline-flex", alignItems:"center", gap:4}}>
             <window.I.Arrow size={12}/> العودة لتسجيل الدخول
           </a>
@@ -279,8 +273,9 @@ function Forgot({ onNav }) {
 
           {!sent ? <>
             <p className="t-muted" style={{fontSize: 13, margin: "0 0 22px"}}>أدخل بريدك ونرسل لك رابط الاستعادة خلال دقائق.</p>
-            <div className="field"><label>البريد الإلكتروني</label><input className="input" type="email" autoFocus placeholder="you@example.com"/></div>
-            <button className="btn btn-primary btn-block btn-lg" type="submit" style={{marginTop: 14}}>إرسال الرابط</button>
+            {err && <div className="err" style={{marginBottom: 10}}>{err}</div>}
+            <div className="field"><label>البريد الإلكتروني</label><input className="input" type="email" autoFocus placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)}/></div>
+            <button className="btn btn-primary btn-block btn-lg" type="submit" style={{marginTop: 14}} disabled={loading}>{loading ? "جارٍ الإرسال…" : "إرسال الرابط"}</button>
           </> : <div className="card card-pad" style={{background:"var(--ok-soft)", borderColor:"var(--ok)"}}>
             <div className="row gap-3">
               <window.I.Check2 size={28} stroke="var(--ok)"/>

@@ -111,29 +111,25 @@ function Home({ onNav, session }) {
       </div>
 
       {/* Recommendation */}
-      <div className={recClass} style={{marginTop: 14}}>
-        <div className="icn">
-          {status === "danger" ? <window.I.Alert size={18}/> : status === "warn" ? <window.I.Spark size={18}/> : <window.I.Check size={18}/>}
-        </div>
-        <div style={{flex: 1}}>
-          <div style={{fontWeight: 600, fontSize: 13, marginBottom: 4}}>
-            {status === "danger" && "احجز فنّي اليوم"}
-            {status === "warn" && "راقب على مدى يومين"}
-            {status === "ok" && "كل شيء على ما يرام"}
+      {(() => {
+        const rec = window.KhoosAI.getRecommendation(trap);
+        const iconColor = rec.status === "danger" ? "var(--danger)" : rec.status === "warn" ? "var(--warn)" : "var(--ok)";
+        return (
+          <div className={recClass} style={{marginTop: 14}}>
+            <div className="icn" style={{ color: iconColor }}>
+              {rec.status === "danger" ? <window.I.Alert size={18}/> : rec.status === "warn" ? <window.I.Spark size={18}/> : <window.I.Check size={18}/>}
+            </div>
+            <div style={{flex: 1}}>
+              <div style={{fontWeight: 600, fontSize: 13, marginBottom: 4}}>{rec.title}</div>
+              <div style={{fontSize: 12, color: "var(--ink-2)", lineHeight: 1.5}}>{rec.body}</div>
+              <button className="btn btn-primary btn-sm" style={{marginTop: 10}} onClick={() => onNav("technician", trap)}>
+                <window.I.User size={13}/>
+                {rec.action}
+              </button>
+            </div>
           </div>
-          <div style={{fontSize: 12, color: "var(--ink-2)", lineHeight: 1.5}}>
-            {status === "warn" && "نمط الإصابة يشير إلى ذكور سوسة النخيل. لو زاد العدد عن 20 خلال 48 ساعة، نوصي بمعالجة فوريّة."}
-            {status === "danger" && "العدد تجاوز العتبة الحرجة. ننصح بحقن جذع النخيل بمبيد الكلوربيريفوس خلال 48 ساعة."}
-            {status === "ok" && "المصيدة تعمل بشكل ممتاز. لا حاجة لتدخّل."}
-          </div>
-          {status !== "ok" && (
-            <button className="btn btn-primary btn-sm" style={{marginTop: 10}} onClick={() => onNav("technician")}>
-              <window.I.User size={13}/>
-              اطلب فنّي
-            </button>
-          )}
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Quick stats */}
       <div className="stat-row">
@@ -312,10 +308,34 @@ function Alerts({ onNav }) {
 }
 
 // ===== Technician request =====
-function Technician({ onBack }) {
+function Technician({ trap, onBack }) {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState(1);
   const [issue, setIssue] = useState("صيانة دوريّة");
+  const [loading, setLoading] = useState(false);
+
+  const confirmBooking = async () => {
+    const sb = window.khoosSb;
+    if (!sb) { setStep(4); return; }
+    setLoading(true);
+    const tech = TECHNICIANS.find(t => t.id === selected) || { name: "غير محدد" };
+    try {
+      await sb.from("engineer_tasks").insert({
+        trap_id: trap?._uuid || null,
+        farm_name: trap?.farm || "",
+        trap_code: trap?.id || "",
+        title: `طلب ${issue} - فنّي: ${tech.name}`,
+        due_label: "مجدول: اليوم 14:00",
+        status: "open"
+      });
+      setStep(4);
+    } catch (e) {
+      console.error(e);
+      alert("حدث خطأ أثناء تأكيد الحجز.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="m-page-anim">
@@ -421,7 +441,7 @@ function Technician({ onBack }) {
               <span style={{color:"var(--ink-3)"}}>نوع الزيارة</span><span>{issue}</span>
             </div>
             <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
-              <span style={{color:"var(--ink-3)"}}>الفنّي</span><span>{TECHNICIANS.find(t => t.id === selected).name}</span>
+            <span style={{color:"var(--ink-3)"}}>فنّي</span><span>{TECHNICIANS.find(t => t.id === selected)?.name || "غير محدد"}</span>
             </div>
             <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
               <span style={{color:"var(--ink-3)"}}>الموعد</span><span>اليوم · 14:00</span>
@@ -433,8 +453,8 @@ function Technician({ onBack }) {
             </div>
           </div>
 
-          <button className="btn btn-primary btn-block btn-lg" onClick={() => setStep(4)}>
-            تأكيد الحجز
+          <button className="btn btn-primary btn-block btn-lg" onClick={confirmBooking} disabled={loading}>
+            {loading ? "جاري التأكيد..." : "تأكيد الحجز"}
           </button>
         </>}
 
@@ -461,6 +481,31 @@ function Technician({ onBack }) {
 // ===== Subscription =====
 function Subscription({ onBack }) {
   const [plan, setPlan] = useState("farmer");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handlePay = () => {
+    setLoading(true);
+    // Simulate Stripe Elements / Payment Intent flow
+    setTimeout(() => {
+      setLoading(false);
+      setSuccess(true);
+    }, 2500);
+  };
+
+  if (success) {
+    return (
+      <div className="m-page m-page-anim" style={{textAlign:"center", padding: "60px 20px"}}>
+        <div style={{width:80, height:80, borderRadius:"50%", background:"var(--ok-soft)", color:"var(--ok)", display:"grid", placeItems:"center", margin:"0 auto 24px"}}>
+          <window.I.Check size={40} sw={2.5}/>
+        </div>
+        <h1 className="m-h1">تم تفعيل الاشتراك!</h1>
+        <p style={{color:"var(--ink-3)", fontSize:14, lineHeight:1.6, marginTop:8}}>شكرًا لثقتك في خوص. باقتك الجديدة فعّالة الآن لجميع مصايدك.</p>
+        <button className="btn btn-primary btn-block btn-lg" style={{marginTop:30}} onClick={onBack}>العودة للرئيسية</button>
+      </div>
+    );
+  }
+
   return (
     <div className="m-page-anim">
       <MTopbar title="الاشتراك" onBack={onBack}/>
@@ -505,9 +550,13 @@ function Subscription({ onBack }) {
           <a style={{color:"var(--brand)", fontSize: 12}}>تغيير</a>
         </div>
 
-        <button className="btn btn-primary btn-block btn-lg" style={{marginTop: 16}}>
-          <window.I.Lock size={14}/>
-          ادفع الآن · {plan === "basic" ? 9 : plan === "farmer" ? 19 : 35} ر.ع
+        <button className="btn btn-primary btn-block btn-lg" style={{marginTop: 16}} onClick={handlePay} disabled={loading}>
+          {loading ? "جاري معالجة الدفع..." : (
+            <>
+              <window.I.Lock size={14}/>
+              ادفع الآن · {plan === "basic" ? 9 : plan === "farmer" ? 19 : 35} ر.ع
+            </>
+          )}
         </button>
         <p style={{textAlign:"center", fontSize:11, color:"var(--ink-3)", marginTop: 10}}>
           الدفع آمن · مشفّر بـ SSL
@@ -542,7 +591,7 @@ function ReportsAnalytics({ onBack, session }) {
   ];
 
   const pdfExport = function () {
-    window.alert("تصدير PDF غير مفعّل بعد — يُربَط لاحقاً بخادم أو مكتبة تقارير.");
+    window.print();
   };
 
   return (
@@ -983,8 +1032,8 @@ function App() {
     setOverlay(null);
   };
 
-  const navTo = function (p) {
-    if (p === "technician") setOverlay("technician");
+  const navTo = function (p, ctx) {
+    if (p === "technician") setOverlay(ctx || "technician");
     else if (p === "subscription") setOverlay("subscription");
     else if (p === "reports") setOverlay("reports");
     else if (p === "alerts") setTab("alerts");
@@ -1009,8 +1058,10 @@ function App() {
         }}
       />
     );
-  } else if (overlay === "technician") body = <Technician onBack={() => setOverlay(null)}/>;
-  else if (overlay === "subscription") body = <Subscription onBack={() => setOverlay(null)}/>;
+  } else if (overlay === "technician" || (overlay && overlay._uuid)) {
+    const t = overlay && overlay._uuid ? overlay : (window.DATA?.TRAPS_DATA?.[0] || null);
+    body = <Technician trap={t} onBack={() => setOverlay(null)}/>;
+  } else if (overlay === "subscription") body = <Subscription onBack={() => setOverlay(null)}/>;
   else if (overlay === "reports") body = <ReportsAnalytics onBack={() => setOverlay(null)} session={session}/>;
   else if (tab === "home") {
     if (role === "admin") body = <MobileAdminDash />;

@@ -105,10 +105,30 @@ function AccountTab() {
 }
 
 function OrgTab() {
+  const [loading, setLoading] = React.useState(false);
+  const [profile, setProfile] = React.useState(window.KhoosAuth.getProfile() || {});
+
+  const handleSave = async () => {
+    if (!window.khoosSb || !profile.userId) return;
+    setLoading(true);
+    try {
+      const { error } = await window.khoosSb.from("profiles").update({
+        subtitle: profile.subtitle
+      }).eq("id", profile.userId);
+      if (error) throw error;
+      await window.KhoosAuth.init(); // Refresh profile
+      alert("تم الحفظ بنجاح");
+    } catch (e) {
+      alert("Error: " + e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return <SettingsCard title="معلومات المؤسّسة"
-    footer={<button className="btn btn-primary">حفظ التغييرات</button>}>
+    footer={<button className="btn btn-primary" onClick={handleSave} disabled={loading}>{loading ? "جاري الحفظ..." : "حفظ التغييرات"}</button>}>
     <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap: 14}}>
-      <div className="field"><label>اسم المؤسّسة</label><input className="input" defaultValue="مزرعة الواحة للتمور"/></div>
+      <div className="field"><label>اسم المؤسّسة</label><input className="input" value={profile.subtitle || ""} onChange={e => setProfile({...profile, subtitle: e.target.value})}/></div>
       <div className="field"><label>السجل التجاري</label><input className="input" defaultValue="1010xxxxxx" dir="ltr"/></div>
       <div className="field"><label>المنطقة</label><select className="select"><option>القصيم</option><option>الأحساء</option></select></div>
       <div className="field"><label>المساحة الإجماليّة (هكتار)</label><input className="input" defaultValue="39"/></div>
@@ -117,8 +137,61 @@ function OrgTab() {
   </SettingsCard>;
 }
 
+function UpgradePlanModal({ isOpen, onClose }) {
+  const [loading, setLoading] = React.useState(false);
+  const [success, setSuccess] = React.useState(false);
+
+  const handlePay = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setSuccess(true);
+    }, 2000);
+  };
+
+  return (
+    <window.UI.Modal isOpen={isOpen} onClose={onClose} title="ترقية الخطة">
+      {success ? (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <div style={{ width: 60, height: 60, borderRadius: "50%", background: "var(--ok-soft)", color: "var(--ok)", display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+            <window.I.Check size={30} sw={2.5} />
+          </div>
+          <h3 style={{ fontSize: 20, fontWeight: 600 }}>تم الترقية بنجاح!</h3>
+          <p style={{ color: "var(--ink-3)", marginTop: 8 }}>تم تحديث خطتك بنجاح. ستظهر التغييرات في فاتورتك القادمة.</p>
+          <button className="btn btn-primary" style={{ marginTop: 24, width: "100%" }} onClick={onClose}>إغلاق</button>
+        </div>
+      ) : (
+        <div className="col gap-4">
+          <div style={{ padding: 16, background: "var(--bg-2)", borderRadius: 12 }}>
+            <div className="row between">
+              <div>
+                <div style={{ fontWeight: 600 }}>الخطة الاحترافية</div>
+                <div style={{ fontSize: 12, color: "var(--ink-3)" }}>دعم حتى 100 مصيدة + ذكاء اصطناعي</div>
+              </div>
+              <div style={{ fontWeight: 700 }}>999 ر.س</div>
+            </div>
+          </div>
+          <div className="field">
+            <label>بيانات البطاقة</label>
+            <div style={{ padding: 12, border: "1px solid var(--line)", borderRadius: 8, display: "flex", alignItems: "center", gap: 10 }}>
+              <window.I.Card size={18} />
+              <div style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: 14 }}>•••• •••• •••• 4242</div>
+              <div style={{ fontSize: 12, color: "var(--ink-3)" }}>12/26</div>
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{ width: "100%" }} onClick={handlePay} disabled={loading}>
+            {loading ? "جاري المعالجة..." : "تأكيد الدفع والترقية"}
+          </button>
+        </div>
+      )}
+    </window.UI.Modal>
+  );
+}
+
 function BillingTab() {
+  const [isUpgradeOpen, setIsUpgradeOpen] = React.useState(false);
   return <>
+    <UpgradePlanModal isOpen={isUpgradeOpen} onClose={() => setIsUpgradeOpen(false)} />
     <div className="card" style={{padding: 22, marginBottom: 16, background:"linear-gradient(135deg, #2a2218 0%, #1f1a14 100%)", color:"#f0e6cf"}}>
       <div className="row between">
         <div>
@@ -128,7 +201,7 @@ function BillingTab() {
         </div>
         <div style={{textAlign:"end"}}>
           <div style={{fontFamily:"var(--font-display)", fontSize: 32, fontWeight: 600}}>599 <span style={{fontSize: 12, color:"#a89776"}}>ر.س / شهر</span></div>
-          <button className="btn btn-sm" style={{background:"#d4a35a", color:"#1f1a14", marginTop: 6}}>ترقية الخطّة</button>
+          <button className="btn btn-sm" style={{background:"#d4a35a", color:"#1f1a14", marginTop: 6}} onClick={() => setIsUpgradeOpen(true)}>ترقية الخطّة</button>
         </div>
       </div>
       <div style={{height:1, background:"rgba(233,223,201,.1)", margin:"18px 0"}}/>
@@ -445,7 +518,7 @@ function ReportsPage() {
       </div>
       <div className="row gap-2">
         <button className="btn btn-secondary btn-sm"><window.I.Calendar size={14}/>هذا الشهر</button>
-        <button className="btn btn-secondary btn-sm"><window.I.Download size={14}/>تصدير PDF</button>
+        <button className="btn btn-secondary btn-sm" onClick={() => window.print()}><window.I.Download size={14}/>تصدير PDF</button>
       </div>
     </div>
 

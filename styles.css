@@ -509,6 +509,41 @@ a { color: inherit; text-decoration: none; }
 }
 .hero .badge-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(79,122,60,.18); }
 
+/* ===== Print Styles (PDF Export) ===== */
+@media print {
+  .tweaks-panel, .sidebar, .topbar, .btn, .seg, .icon-btn, .bottom-nav, .m-topbar, .search, .drawer-bg, .drawer {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    padding: 0 !important;
+    color: #000 !important;
+  }
+  .app-content, .m-page, .scroll-body {
+    margin: 0 !important;
+    padding: 20px !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+    break-inside: avoid;
+    background: #fff !important;
+  }
+  .page-head {
+    margin-bottom: 30px !important;
+  }
+  .page-title {
+    font-size: 24pt !important;
+    color: #000 !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
 /* ===== Mobile ===== */
 @media (max-width: 900px) {
   .app-root { grid-template-columns: 1fr; }

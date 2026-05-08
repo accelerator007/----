@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>خوص — تطبيق المزارع</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3a2f23">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="خوص">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Frank+Ruhl+Libre:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css"/>
+
+<style>
+  body { background: #2a2218; }
+  .stage { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .phone-shell {
+    width: 390px; height: 800px;
+    background: #1f1a14;
+    border-radius: 48px;
+    padding: 12px;
+    box-shadow: 0 0 0 2px #3a3225, 0 30px 80px rgba(0,0,0,.5);
+    position: relative;
+  }
+  .phone-screen {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    border-radius: 38px;
+    overflow: hidden;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .phone-notch {
+    position: absolute; top: 16px; left: 50%;
+    transform: translateX(-50%);
+    width: 110px; height: 28px;
+    background: #1f1a14; border-radius: 999px;
+    z-index: 100;
+  }
+  .status-bar {
+    position: absolute; top: 18px; left: 0; right: 0;
+    padding: 0 30px; display: flex; justify-content: space-between;
+    font-family: var(--font-mono); font-weight: 600; font-size: 13px;
+    z-index: 99; color: var(--ink);
+  }
+  .status-bar .right { display:flex; gap: 5px; align-items: center; }
+  @media (max-width: 480px) {
+    body { background: var(--bg); }
+    .stage { padding: 0; min-height: 100vh; align-items: stretch; }
+    .phone-shell { width: 100%; height: 100vh; border-radius: 0; padding: 0; box-shadow: none; }
+    .phone-screen { border-radius: 0; }
+    .phone-notch { display: none; }
+    .status-bar { display: none; }
+  }
+  .scroll-body { flex: 1; overflow-y: auto; padding: 70px 0 90px; -webkit-overflow-scrolling: touch; }
+  @media (max-width: 480px) { .scroll-body { padding-top: 14px; } }
+
+  .m-page { padding: 16px 18px; }
+  .m-greeting { font-size: 13px; color: var(--ink-3); }
+  .m-name { font-family: var(--font-display); font-size: 26px; font-weight: 600; margin: 2px 0 0; }
+  .m-h1 { font-family: var(--font-display); font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+  .m-h2 { font-family: var(--font-display); font-size: 18px; font-weight: 600; margin: 0; }
+
+  .trap-card {
+    background: linear-gradient(160deg, #2a2218 0%, #1f1a14 100%);
+    color: #f0e6cf;
+    border-radius: 22px;
+    padding: 20px;
+    position: relative; overflow: hidden;
+    box-shadow: var(--sh-2);
+  }
+  .trap-card.danger { background: linear-gradient(160deg, #7d2e14 0%, #4a1a0a 100%); }
+  .trap-card.warn   { background: linear-gradient(160deg, #8a5824 0%, #4a2e10 100%); }
+  .trap-card .live { display:flex; align-items:center; gap:6px; font-family: var(--font-mono); font-size: 11px; color: #d4a35a; }
+  .trap-card .live .dot { width:6px; height:6px; border-radius:50%; background:#90b86c; box-shadow: 0 0 0 4px rgba(144,184,108,.2); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .big-num { font-family: var(--font-display); font-size: 64px; font-weight: 600; line-height: 1; letter-spacing: -.03em; margin: 16px 0 6px; }
+  .big-num .unit { font-size: 16px; color: #a89776; font-family: var(--font-sans); margin-inline-start: 8px; font-weight: 500; }
+
+  .trap-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(233,223,201,.12); }
+  .trap-meta .item .l { font-size: 10px; color: #a89776; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .1em; }
+  .trap-meta .item .v { font-size: 14px; color: #f0e6cf; margin-top: 3px; font-weight: 500; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .stat-tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; text-align: center; }
+  .stat-tile .l { font-size: 10px; color: var(--ink-3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .1em; }
+  .stat-tile .v { font-family: var(--font-display); font-size: 22px; font-weight: 600; margin-top: 2px; }
+
+  .recommend {
+    background: var(--accent-soft);
+    border: 1px solid #b9cf9a;
+    border-radius: 16px;
+    padding: 16px;
+    display: flex; gap: 12px;
+  }
+  .recommend.danger { background: var(--danger-soft); border-color: #e89d80; }
+  .recommend.warn { background: var(--warn-soft); border-color: #e8c182; }
+  .recommend .icn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--ok); color: #fff;
+    display: grid; place-items: center; flex: none;
+  }
+  .recommend.danger .icn { background: var(--danger); }
+  .recommend.warn .icn { background: var(--warn); }
+
+  .sect-head { display:flex; justify-content: space-between; align-items: end; margin: 22px 0 10px; }
+  .sect-head h3 { font-family: var(--font-display); font-size: 16px; font-weight: 600; margin: 0; }
+  .sect-head a { font-size: 12px; color: var(--brand); }
+
+  .alert-row {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 10px;
+  }
+  .alert-row .severity { width: 4px; align-self: stretch; border-radius: 2px; }
+  .alert-row.critical .severity { background: var(--danger); }
+  .alert-row.warn .severity { background: var(--warn); }
+  .alert-row.info .severity { background: var(--info); }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(20px);
+    border-top: 1px solid var(--line);
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 8px 6px 22px;
+    z-index: 50;
+  }
+  @media (max-width: 480px) { .bottom-nav { padding-bottom: max(22px, env(safe-area-inset-bottom)); } }
+  .bnav-item {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 6px 4px; border-radius: 10px;
+    color: var(--ink-4); cursor: pointer;
+    font-size: 10px; font-weight: 500;
+    transition: color .12s;
+  }
+  .bnav-item.active { color: var(--brand); }
+  .bnav-fab {
+    background: var(--brand); color: #fff8e8;
+    width: 50px; height: 50px; border-radius: 16px;
+    display: grid; place-items: center;
+    margin-top: -22px; box-shadow: 0 8px 20px rgba(111,67,24,.3);
+  }
+
+  /* Top bar inside screen */
+  .m-topbar {
+    position: absolute; top: 50px; left: 0; right: 0;
+    padding: 8px 18px; display: flex; align-items: center; justify-content: space-between;
+    background: rgba(250,246,239,.85); backdrop-filter: blur(10px);
+    z-index: 40;
+  }
+  @media (max-width: 480px) { .m-topbar { top: 0; padding-top: max(12px, env(safe-area-inset-top)); } }
+  .m-topbar h2 { font-family: var(--font-display); font-size: 17px; font-weight: 600; margin: 0; }
+  .m-topbar .icon-btn { width: 36px; height: 36px; }
+
+  /* Page transition */
+  .m-page-anim { animation: fadeIn .18s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } }
+
+  /* Lists */
+  .list-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .list-row { padding: 14px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--line); }
+  .list-row:last-child { border-bottom: none; }
+
+  /* Tech card */
+  .tech-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex; gap: 14px; align-items: center;
+  }
+  .tech-card .ph {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #8a5824, #5a7a3f);
+    color: #fff; display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 600; font-size: 22px;
+    flex: none;
+  }
+
+  .stars { color: #d4a35a; font-size: 12px; }
+
+  /* Plan card */
+  .plan-card {
+    border: 2px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .plan-card.selected { border-color: var(--brand); background: var(--bg-2); }
+
+  /* Tab segments */
+  .seg-mobile {
+    display: flex; padding: 3px; background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 10px; gap: 2px;
+  }
+  .seg-mobile button {
+    flex: 1; padding: 7px; font-size: 12px; font-weight: 500;
+    background: transparent; border: none; border-radius: 7px;
+    color: var(--ink-3); cursor: pointer;
+  }
+  .seg-mobile button.active { background: var(--surface); color: var(--ink); box-shadow: var(--sh-1); }
+</style>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+    <rect width="200" height="200" fill="#faf6ef"/>
+    <rect x="60" y="60" width="80" height="80" rx="14" fill="#6f4318"/>
+    <text x="100" y="120" text-anchor="middle" font-family="serif" font-weight="700" fill="#f3e2bd" font-size="60">س</text>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="stage">
+  <div class="phone-shell">
+    <div class="phone-notch"></div>
+    <div class="status-bar">
+      <span>9:41</span>
+      <span class="right">
+        <svg width="16" height="11" viewBox="0 0 16 11"><circle cx="2" cy="9" r="1.5" fill="currentColor"/><circle cx="6" cy="7" r="1.5" fill="currentColor"/><circle cx="10" cy="5" r="1.5" fill="currentColor"/><circle cx="14" cy="3" r="1.5" fill="currentColor"/></svg>
+        <svg width="16" height="11" viewBox="0 0 16 11"><path d="M8 1.5C5.5 1.5 3.3 2.5 1.6 4.2L0.5 3.1C2.5 1.1 5.1 0 8 0C10.9 0 13.5 1.1 15.5 3.1L14.4 4.2C12.7 2.5 10.5 1.5 8 1.5Z" fill="currentColor"/><path d="M8 5C6.5 5 5.2 5.6 4.2 6.6L3.1 5.5C4.4 4.2 6.1 3.5 8 3.5C9.9 3.5 11.6 4.2 12.9 5.5L11.8 6.6C10.8 5.6 9.5 5 8 5Z" fill="currentColor"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/></svg>
+        <span style="font-size: 11px;">88%</span>
+        <svg width="22" height="11" viewBox="0 0 22 11"><rect x="0.5" y="0.5" width="19" height="10" rx="2.5" stroke="currentColor" fill="none"/><rect x="2" y="2" width="16" height="7" rx="1.5" fill="currentColor"/></svg>
+      </span>
+    </div>
+    <div class="phone-screen">
+      <div id="root" style="display:contents"></div>
+    </div>
+  </div>
+</div>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="ui.jsx"></script>
+<script type="text/babel" src="session.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ===== Mock data =====
+const MY_TRAP = {
+  id: "TRAP-A1", name: "مصيدة المزرعة",
+  status: "تنبيه", today: 11, yesterday: 7, week: 58,
+  battery: 67, signal: 84, lastSeen: "قبل 6 دقائق",
+  lat: 26.31, lng: 43.97
+};
+
+const MY_ALERTS = [
+  { id:1, sev:"warn", title:"ارتفاع ملحوظ", desc:"عدد الحشرات تجاوز المعدّل الطبيعي", time:"قبل ساعة", read: false },
+  { id:2, sev:"info", title:"تقرير الأسبوع جاهز", desc:"ملخّص أسبوع 18", time:"أمس", read: false },
+  { id:3, sev:"info", title:"تم تغيير الفرمون", desc:"بواسطة الفنّي خالد", time:"قبل 5 أيام", read: true },
+];
+
+const TECHNICIANS = [
+  { id:1, name:"خالد العتيبي", role:"فنّي ميداني معتمد", rating: 4.9, jobs: 124, distance: "2.4 كم", price: 8 },
+  { id:2, name:"يوسف الحربي", role:"مهندس زراعي", rating: 4.8, jobs: 87, distance: "5.1 كم", price: 12 },
+  { id:3, name:"سعد القحطاني", role:"فنّي ميداني", rating: 4.6, jobs: 56, distance: "8.7 كم", price: 7 },
+];
+
+// ===== Top bar =====
+function MTopbar({ title, onBack, action }) {
+  return (
+    <div className="m-topbar">
+      <div style={{display:"flex", alignItems:"center", gap: 6}}>
+        {onBack && <button className="icon-btn" onClick={onBack}><window.I.Arrow size={18}/></button>}
+        <h2>{title}</h2>
+      </div>
+      {action || <div style={{width: 36}}/>}
+    </div>
+  );
+}
+
+// ===== Home (Trap dashboard) =====
+function Home({ onNav, session }) {
+  const status = MY_TRAP.today >= 20 ? "danger" : MY_TRAP.today >= 8 ? "warn" : "ok";
+  const cardClass = status === "danger" ? "trap-card danger" : status === "warn" ? "trap-card warn" : "trap-card";
+  const recClass = status === "danger" ? "recommend danger" : status === "warn" ? "recommend warn" : "recommend";
+  const displayName = (session && session.name) ? session.name : "ضيف";
+
+  return (
+    <div className="m-page m-page-anim">
+      <div style={{padding: "8px 0 16px"}}>
+        <div className="m-greeting">السلام عليكم،</div>
+        <div className="m-name">{displayName} 👋</div>
+      </div>
+
+      <div className={cardClass}>
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+          <div className="live"><span className="dot"></span>مباشر · {MY_TRAP.lastSeen}</div>
+          <span style={{fontFamily:"var(--font-mono)", fontSize:11, color:"#a89776"}}>{MY_TRAP.id}</span>
+        </div>
+        <div className="big-num">{MY_TRAP.today}<span className="unit">حشرة اليوم</span></div>
+        <div style={{fontSize: 13, color: "#c9bca0"}}>
+          {status === "danger" && "⚠️ مستوى مرتفع — يحتاج تدخّل سريع"}
+          {status === "warn" && "ارتفاع طفيف عن المعدّل المعتاد"}
+          {status === "ok" && "✓ المستوى طبيعي"}
+        </div>
+
+        <div className="trap-meta">
+          <div className="item"><div className="l">أمس</div><div className="v">{MY_TRAP.yesterday} حشرة</div></div>
+          <div className="item"><div className="l">البطّاريّة</div><div className="v">{MY_TRAP.battery}٪</div></div>
+          <div className="item"><div className="l">الإشارة</div><div className="v">جيّدة</div></div>
+        </div>
+      </div>
+
+      {/* Recommendation */}
+      <div className={recClass} style={{marginTop: 14}}>
+        <div className="icn">
+          {status === "danger" ? <window.I.Alert size={18}/> : status === "warn" ? <window.I.Spark size={18}/> : <window.I.Check size={18}/>}
+        </div>
+        <div style={{flex: 1}}>
+          <div style={{fontWeight: 600, fontSize: 13, marginBottom: 4}}>
+            {status === "danger" && "احجز فنّي اليوم"}
+            {status === "warn" && "راقب على مدى يومين"}
+            {status === "ok" && "كل شيء على ما يرام"}
+          </div>
+          <div style={{fontSize: 12, color: "var(--ink-2)", lineHeight: 1.5}}>
+            {status === "warn" && "نمط الإصابة يشير إلى ذكور سوسة النخيل. لو زاد العدد عن 20 خلال 48 ساعة، نوصي بمعالجة فوريّة."}
+            {status === "danger" && "العدد تجاوز العتبة الحرجة. ننصح بحقن جذع النخيل بمبيد الكلوربيريفوس خلال 48 ساعة."}
+            {status === "ok" && "المصيدة تعمل بشكل ممتاز. لا حاجة لتدخّل."}
+          </div>
+          {status !== "ok" && (
+            <button className="btn btn-primary btn-sm" style={{marginTop: 10}} onClick={() => onNav("technician")}>
+              <window.I.User size={13}/>
+              اطلب فنّي
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Quick stats */}
+      <div className="stat-row">
+        <div className="stat-tile"><div className="l">الأسبوع</div><div className="v">{MY_TRAP.week}</div></div>
+        <div className="stat-tile"><div className="l">الشهر</div><div className="v">{MY_TRAP.week*4}</div></div>
+        <div className="stat-tile"><div className="l">المعدّل</div><div className="v">٨/يوم</div></div>
+      </div>
+
+      {/* Trend mini chart */}
+      <div className="sect-head"><h3>تدفّق آخر 7 أيام</h3></div>
+      <div className="list-card" style={{padding: 14}}>
+        <window.UI.AreaChart series={[5,8,4,9,7,12,11]} labels={["س","ح","ن","ث","ر","خ","ج"]} height={140}/>
+      </div>
+
+      {/* Alerts preview */}
+      <div className="sect-head"><h3>آخر التنبيهات</h3><a onClick={() => onNav("alerts")}>الكل</a></div>
+      {MY_ALERTS.slice(0, 2).map(a => (
+        <AlertRow key={a.id} a={a} onClick={() => onNav("alerts")}/>
+      ))}
+    </div>
+  );
+}
+
+function AlertRow({ a, onClick }) {
+  return (
+    <div className={"alert-row " + a.sev} onClick={onClick}>
+      <div className="severity"></div>
+      <div style={{flex:1}}>
+        <div style={{display:"flex", justifyContent:"space-between", marginBottom: 2}}>
+          <span style={{fontWeight: 500, fontSize: 13}}>{a.title}</span>
+          {!a.read && <span style={{width:8, height:8, borderRadius:"50%", background:"var(--brand)"}}/>}
+        </div>
+        <div style={{fontSize: 12, color: "var(--ink-3)"}}>{a.desc}</div>
+        <div style={{fontFamily:"var(--font-mono)", fontSize: 10, color: "var(--ink-4)", marginTop: 4}}>{a.time}</div>
+      </div>
+      <window.I.Chevron size={14} stroke="var(--ink-4)"/>
+    </div>
+  );
+}
+
+// ===== Trap Detail =====
+function TrapDetail({ onBack }) {
+  const [tab, setTab] = useState("trend");
+  return (
+    <div className="m-page-anim">
+      <MTopbar title="مصيدة المزرعة" onBack={onBack} action={
+        <button className="icon-btn"><window.I.More size={18}/></button>
+      }/>
+      <div className="m-page">
+        <div className="trap-card warn">
+          <div className="live"><span className="dot"></span>مباشر</div>
+          <div className="big-num">{MY_TRAP.today}<span className="unit">/ اليوم</span></div>
+          <div className="trap-meta">
+            <div className="item"><div className="l">البطّاريّة</div><div className="v">{MY_TRAP.battery}٪</div></div>
+            <div className="item"><div className="l">الإشارة</div><div className="v">{MY_TRAP.signal}٪</div></div>
+            <div className="item"><div className="l">الموقع</div><div className="v">المزرعة</div></div>
+          </div>
+        </div>
+
+        <div className="seg-mobile" style={{marginTop: 16}}>
+          <button className={tab === "trend" ? "active" : ""} onClick={() => setTab("trend")}>الاتجاه</button>
+          <button className={tab === "device" ? "active" : ""} onClick={() => setTab("device")}>الجهاز</button>
+          <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")}>السجلّ</button>
+        </div>
+
+        {tab === "trend" && <div className="list-card" style={{padding: 14, marginTop: 14}}>
+          <div style={{fontFamily:"var(--font-mono)", fontSize:11, color:"var(--ink-3)", marginBottom: 8}}>30 يوم</div>
+          <window.UI.AreaChart series={[3,5,4,6,7,5,8,9,7,11,9,12,8,10,13,9,11,8,12,15,11,14,18,13,11,9,12,14,11,11]} height={180}/>
+        </div>}
+
+        {tab === "device" && <div className="list-card" style={{marginTop: 14}}>
+          {[
+            {l:"الموديل", v:"KHOOS-X1"},
+            {l:"الإصدار", v:"FW 2.4.1"},
+            {l:"تاريخ التركيب", v:"15 أبريل 2026"},
+            {l:"آخر صيانة", v:"قبل 14 يوم"},
+            {l:"نوع الفرمون", v:"Ferrolure+"},
+          ].map((r, i) => (
+            <div key={i} className="list-row" style={{padding: "12px 14px"}}>
+              <div style={{flex:1, fontSize: 13, color:"var(--ink-3)"}}>{r.l}</div>
+              <div style={{fontWeight: 500, fontSize: 13}}>{r.v}</div>
+            </div>
+          ))}
+        </div>}
+
+        {tab === "history" && <div className="list-card" style={{marginTop: 14}}>
+          {[
+            {d:"اليوم 14:22", e:"رصد +3 حشرات"},
+            {d:"اليوم 11:08", e:"رصد +5 حشرات"},
+            {d:"أمس 17:45", e:"رصد +4 حشرات"},
+            {d:"قبل 3 أيام", e:"تم تغيير الفرمون"},
+            {d:"قبل أسبوع", e:"معايرة الجهاز"},
+          ].map((r, i) => (
+            <div key={i} className="list-row">
+              <div style={{width: 8, height: 8, borderRadius: "50%", background: "var(--brand)", flex: "none"}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize: 13, fontWeight: 500}}>{r.e}</div>
+                <div style={{fontFamily:"var(--font-mono)", fontSize: 10, color:"var(--ink-3)", marginTop: 2}}>{r.d}</div>
+              </div>
+            </div>
+          ))}
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+// ===== Alerts =====
+function Alerts({ onNav }) {
+  return (
+    <div className="m-page-anim">
+      <MTopbar title="التنبيهات"/>
+      <div className="m-page">
+        {MY_ALERTS.map(a => <AlertRow key={a.id} a={a} onClick={() => {}}/>)}
+        <div style={{textAlign:"center", padding: 30, color:"var(--ink-3)", fontSize: 12}}>
+          لا توجد تنبيهات أقدم
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===== Technician request =====
+function Technician({ onBack }) {
+  const [step, setStep] = useState(1);
+  const [selected, setSelected] = useState(1);
+  const [issue, setIssue] = useState("صيانة دوريّة");
+
+  return (
+    <div className="m-page-anim">
+      <MTopbar title="طلب فنّي" onBack={onBack}/>
+      <div className="m-page">
+        {step === 1 && <>
+          <div className="m-h2">ما نوع الزيارة؟</div>
+          <div style={{fontSize: 13, color:"var(--ink-3)", marginTop: 4, marginBottom: 16}}>اختر سبب الزيارة لنرشّح لك أفضل فنّي</div>
+          {[
+            {v:"إصابة عاجلة", icon:"Alert", d:"ارتفاع كبير في الحشرات", c:"var(--danger)"},
+            {v:"معالجة موصى بها", icon:"Spark", d:"تنفيذ توصية النظام", c:"var(--brand)"},
+            {v:"صيانة دوريّة", icon:"Settings", d:"تغيير فرمون أو فحص", c:"var(--accent)"},
+            {v:"تركيب مصيدة جديدة", icon:"Plus", d:"إضافة جهاز للمزرعة", c:"var(--info)"},
+          ].map(o => {
+            const IconC = window.I[o.icon];
+            const sel = issue === o.v;
+            return (
+              <div key={o.v} onClick={() => setIssue(o.v)} className="list-card" style={{
+                padding: 14, marginBottom: 8, display:"flex", gap: 12, alignItems:"center", cursor:"pointer",
+                borderColor: sel ? "var(--brand)" : "var(--line)",
+                background: sel ? "var(--bg-2)" : "var(--surface)"
+              }}>
+                <div style={{width:36, height:36, borderRadius:10, background: o.c, color:"#fff", display:"grid", placeItems:"center", flex:"none"}}>
+                  <IconC size={18}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:500, fontSize:14}}>{o.v}</div>
+                  <div style={{fontSize:12, color:"var(--ink-3)"}}>{o.d}</div>
+                </div>
+                <div style={{width:20, height:20, borderRadius:"50%", border: "2px solid " + (sel ? "var(--brand)" : "var(--line-2)"), background: sel ? "var(--brand)" : "transparent", display:"grid", placeItems:"center"}}>
+                  {sel && <window.I.Check size={11} stroke="#fff" sw={3}/>}
+                </div>
+              </div>
+            );
+          })}
+
+          <button className="btn btn-primary btn-block btn-lg" style={{marginTop: 14}} onClick={() => setStep(2)}>
+            التالي
+            <window.I.Arrow size={14}/>
+          </button>
+        </>}
+
+        {step === 2 && <>
+          <div className="m-h2">اختر الفنّي</div>
+          <div style={{fontSize: 13, color:"var(--ink-3)", marginTop: 4, marginBottom: 16}}>الأقرب لمزرعتك ومتاحون اليوم</div>
+          {TECHNICIANS.map(t => {
+            const sel = selected === t.id;
+            return (
+              <div key={t.id} onClick={() => setSelected(t.id)} className="tech-card" style={{
+                marginBottom: 10, cursor:"pointer",
+                borderColor: sel ? "var(--brand)" : "var(--line)",
+                borderWidth: sel ? 2 : 1,
+                background: sel ? "var(--bg-2)" : "var(--surface)"
+              }}>
+                <div className="ph">{t.name[0]}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight: 500}}>{t.name}</div>
+                  <div style={{fontSize: 12, color:"var(--ink-3)"}}>{t.role}</div>
+                  <div style={{display:"flex", gap: 10, marginTop: 5, fontSize: 11}}>
+                    <span className="stars">★ {t.rating}</span>
+                    <span style={{color:"var(--ink-3)"}}>({t.jobs} زيارة)</span>
+                    <span style={{color:"var(--ink-3)"}}>· {t.distance}</span>
+                  </div>
+                </div>
+                <div style={{textAlign:"end"}}>
+                  <div style={{fontFamily:"var(--font-display)", fontSize: 18, fontWeight: 600}}>{t.price}</div>
+                  <div style={{fontSize: 10, color:"var(--ink-3)", fontFamily:"var(--font-mono)"}}>ر.ع</div>
+                </div>
+              </div>
+            );
+          })}
+          <div className="row gap-2" style={{marginTop: 14}}>
+            <button className="btn btn-ghost grow" onClick={() => setStep(1)}>السابق</button>
+            <button className="btn btn-primary grow" style={{justifyContent:"center"}} onClick={() => setStep(3)}>
+              التالي
+              <window.I.Arrow size={14}/>
+            </button>
+          </div>
+        </>}
+
+        {step === 3 && <>
+          <div className="m-h2">اختر الموعد</div>
+          <div style={{fontSize: 13, color:"var(--ink-3)", marginTop: 4, marginBottom: 16}}>نختار الموعد الأقرب المتاح</div>
+
+          <div className="list-card" style={{padding: 14, marginBottom: 14}}>
+            <div className="row gap-3" style={{marginBottom: 12}}>
+              <window.I.Calendar size={18} stroke="var(--brand)"/>
+              <div>
+                <div style={{fontWeight:500}}>اليوم · 8 مايو</div>
+                <div style={{fontSize: 12, color:"var(--ink-3)"}}>متاح بعد ساعتين</div>
+              </div>
+            </div>
+            <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap: 6}}>
+              {["10:00","12:00","14:00","16:00","18:00","20:00"].map((t,i) => (
+                <button key={t} className={"btn btn-sm " + (i === 2 ? "btn-primary" : "btn-secondary")} style={{justifyContent:"center", fontFamily:"var(--font-mono)"}}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="list-card" style={{padding: 14, marginBottom: 14}}>
+            <div style={{fontWeight: 500, marginBottom: 10}}>ملخّص الطلب</div>
+            <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
+              <span style={{color:"var(--ink-3)"}}>نوع الزيارة</span><span>{issue}</span>
+            </div>
+            <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
+              <span style={{color:"var(--ink-3)"}}>الفنّي</span><span>{TECHNICIANS.find(t => t.id === selected).name}</span>
+            </div>
+            <div className="row between" style={{padding: "6px 0", fontSize: 13}}>
+              <span style={{color:"var(--ink-3)"}}>الموعد</span><span>اليوم · 14:00</span>
+            </div>
+            <div style={{height:1, background:"var(--line)", margin:"6px 0"}}/>
+            <div className="row between" style={{padding: "8px 0", fontSize: 16, fontWeight: 600}}>
+              <span>المجموع</span>
+              <span style={{fontFamily:"var(--font-display)"}}>{TECHNICIANS.find(t => t.id === selected).price} ر.ع</span>
+            </div>
+          </div>
+
+          <button className="btn btn-primary btn-block btn-lg" onClick={() => setStep(4)}>
+            تأكيد الحجز
+          </button>
+        </>}
+
+        {step === 4 && <div style={{textAlign:"center", padding: "30px 0"}}>
+          <div style={{
+            width: 84, height: 84, borderRadius: "50%",
+            background: "var(--ok-soft)", color: "var(--ok)",
+            display: "grid", placeItems:"center", margin: "0 auto 18px"
+          }}>
+            <window.I.Check size={36} sw={2.4}/>
+          </div>
+          <div className="m-h1">تم الحجز!</div>
+          <p style={{color:"var(--ink-3)", fontSize: 14, margin:"6px 0 24px"}}>
+            خالد العتيبي سيصلك اليوم الساعة 14:00. سترسل لك تفاصيل التواصل عبر WhatsApp.
+          </p>
+          <button className="btn btn-primary btn-block btn-lg" onClick={onBack}>عودة للرئيسية</button>
+          <button className="btn btn-ghost btn-block" style={{marginTop: 8}}>عرض تفاصيل الحجز</button>
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+// ===== Subscription =====
+function Subscription({ onBack }) {
+  const [plan, setPlan] = useState("farmer");
+  return (
+    <div className="m-page-anim">
+      <MTopbar title="الاشتراك" onBack={onBack}/>
+      <div className="m-page">
+        <div className="m-h1">اختر خطّتك</div>
+        <p style={{color:"var(--ink-3)", fontSize: 13, margin:"4px 0 18px"}}>14 يوم تجريبيّة، ألغ متى ما تبغى</p>
+
+        {[
+          {id:"basic",  n:"البداية",  p: 9,  d:"مصيدة واحدة", f:["تنبيهات في التطبيق", "تقارير أسبوعيّة"]},
+          {id:"farmer", n:"المزارع",  p: 19, d:"حتى 3 مصايد", popular: true, f:["تنبيهات WhatsApp", "توصيات معالجة", "حجز فنّي بخصم 10%"]},
+          {id:"premium",n:"المتميّز", p: 35, d:"حتى 10 مصايد", f:["كل مميّزات المزارع", "زيارة فنّي مجانيّة شهريّاً", "دعم أولويّة"]},
+        ].map(p => (
+          <div key={p.id} className={"plan-card " + (plan === p.id ? "selected" : "")} onClick={() => setPlan(p.id)} style={{marginBottom: 10, position:"relative"}}>
+            {p.popular && <div style={{position:"absolute", top:-9, insetInlineStart: 14, background:"var(--brand)", color:"#fff8e8", fontSize:10, padding:"2px 8px", borderRadius:4, fontFamily:"var(--font-mono)", letterSpacing:".1em", textTransform:"uppercase"}}>الأكثر اختياراً</div>}
+            <div className="row between" style={{marginBottom: 6}}>
+              <div>
+                <div style={{fontFamily:"var(--font-display)", fontSize:18, fontWeight: 600}}>{p.n}</div>
+                <div style={{fontSize: 12, color:"var(--ink-3)"}}>{p.d}</div>
+              </div>
+              <div style={{textAlign:"end"}}>
+                <span style={{fontFamily:"var(--font-display)", fontSize: 24, fontWeight: 600}}>{p.p}</span>
+                <span style={{fontSize:12, color:"var(--ink-3)", marginInlineStart: 4}}>ر.ع/شهر</span>
+              </div>
+            </div>
+            {plan === p.id && <ul style={{padding: 0, listStyle:"none", margin:"10px 0 0", display:"flex", flexDirection:"column", gap: 6, fontSize: 13}}>
+              {p.f.map((f, i) => <li key={i} style={{display:"flex", gap: 8, alignItems:"center"}}><window.I.Check size={13} stroke="var(--ok)" sw={2.4}/>{f}</li>)}
+            </ul>}
+          </div>
+        ))}
+
+        <div className="list-card" style={{padding: 14, marginTop: 14, display:"flex", gap: 12, alignItems:"center"}}>
+          <div style={{
+            width: 44, height: 30, borderRadius: 5,
+            background: "linear-gradient(135deg, #1a1f71, #4759c4)",
+            color:"#fff", display:"grid", placeItems:"center",
+            fontFamily:"var(--font-mono)", fontWeight: 700, fontSize: 9, flex:"none"
+          }}>VISA</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight: 500, fontSize: 13}}>•••• 4242</div>
+            <div style={{fontSize: 11, color:"var(--ink-3)"}}>تنتهي 09/2027</div>
+          </div>
+          <a style={{color:"var(--brand)", fontSize: 12}}>تغيير</a>
+        </div>
+
+        <button className="btn btn-primary btn-block btn-lg" style={{marginTop: 16}}>
+          <window.I.Lock size={14}/>
+          ادفع الآن · {plan === "basic" ? 9 : plan === "farmer" ? 19 : 35} ر.ع
+        </button>
+        <p style={{textAlign:"center", fontSize:11, color:"var(--ink-3)", marginTop: 10}}>
+          الدفع آمن · مشفّر بـ SSL
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ===== Profile =====
+function Profile({ onNav, session, onLogout }) {
+  const initial = (session && session.name && session.name.trim()[0]) || "؟";
+  const roleLabel = session && session.role === "admin" ? "أدمن" : session && session.role === "engineer" ? "مهندس ميداني" : "مزارع";
+  return (
+    <div className="m-page-anim">
+      <MTopbar title="حسابي"/>
+      <div className="m-page">
+        <div className="list-card" style={{padding: 18, display:"flex", gap: 14, alignItems:"center", marginBottom: 14}}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%",
+            background: "linear-gradient(135deg, #8a5824, #5a7a3f)",
+            color:"#fff", display:"grid", placeItems:"center",
+            fontFamily:"var(--font-display)", fontSize: 22, fontWeight: 600
+          }}>{initial}</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight: 600}}>{(session && session.name) || "مستخدم"}</div>
+            <div style={{fontSize: 12, color:"var(--ink-3)"}}>{(session && session.subtitle) || roleLabel}</div>
+            <div style={{fontFamily:"var(--font-mono)", fontSize: 10, color:"var(--ink-4)", marginTop: 4}}>{(session && session.email) || "—"}</div>
+          </div>
+          <button className="icon-btn"><window.I.Edit size={16}/></button>
+        </div>
+
+        <div className="list-card" style={{
+          padding: 14, marginBottom: 14,
+          background: "linear-gradient(135deg, var(--brand-soft) 0%, var(--accent-soft) 100%)",
+          border: "1px solid var(--brand-soft)"
+        }} onClick={() => onNav("subscription")}>
+          <div className="row between">
+            <div>
+              <div style={{fontFamily:"var(--font-mono)", fontSize:10, color:"var(--ink-3)", textTransform:"uppercase", letterSpacing:".1em"}}>الخطّة الحاليّة</div>
+              <div style={{fontFamily:"var(--font-display)", fontSize: 20, fontWeight: 600}}>المزارع</div>
+              <div style={{fontSize: 12, color:"var(--ink-3)"}}>تجدّد في 12 يونيو</div>
+            </div>
+            <window.I.Chevron size={18} stroke="var(--ink-3)"/>
+          </div>
+        </div>
+
+        {[
+          {label:"الإعدادات", icon:"Settings"},
+          {label:"الإشعارات", icon:"Bell"},
+          {label:"الأمان", icon:"Shield"},
+          {label:"اللغة", icon:"Globe", v:"العربيّة"},
+          {label:"المساعدة والدعم", icon:"Help"},
+        ].map((r, i) => {
+          const IconC = window.I[r.icon];
+          return (
+            <div key={i} className="list-card" style={{padding: 0, marginBottom: i === 4 ? 14 : 8}}>
+              <div className="list-row" style={{borderBottom:"none"}}>
+                <div style={{width:34, height:34, borderRadius:9, background:"var(--bg-2)", display:"grid", placeItems:"center", color:"var(--ink-2)", flex:"none"}}>
+                  <IconC size={16}/>
+                </div>
+                <div style={{flex:1, fontWeight: 500, fontSize: 14}}>{r.label}</div>
+                {r.v && <span style={{fontSize: 12, color:"var(--ink-3)"}}>{r.v}</span>}
+                <window.I.Chevron size={14} stroke="var(--ink-4)"/>
+              </div>
+            </div>
+          );
+        })}
+
+        <button type="button" className="btn btn-ghost btn-block" style={{color:"var(--danger)", marginTop: 4}} onClick={onLogout}>
+          <window.I.Logout size={14}/>
+          تسجيل الخروج
+        </button>
+
+        <p style={{textAlign:"center", fontSize: 10, color:"var(--ink-4)", marginTop: 18, fontFamily:"var(--font-mono)"}}>
+          خوص · v2.4.1
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ===== جلسة موحّدة مع index.html (KhoosSession في localStorage) =====
+function MobileLogin({ onPick }) {
+  return (
+    <div className="m-page m-page-anim" style={{minHeight:"72vh", display:"flex", flexDirection:"column", justifyContent:"center", paddingTop: 8}}>
+      <div style={{textAlign:"center", marginBottom: 22}}>
+        <div style={{fontFamily:"var(--font-display)", fontSize: 28, fontWeight: 600}}>خوص · الجوال</div>
+        <p style={{fontSize: 13, color:"var(--ink-3)", marginTop: 10, lineHeight: 1.5}}>
+          نفس الجلسة وأدوار سطح المكتب — إذا سجّلت من المتصفح على{" "}
+          <span className="t-mono" style={{fontSize: 11}}>index.html</span> ستُحمّل بياناتك هنا تلقائياً (نفس العنوان والمتصفح).
+        </p>
+      </div>
+      <div className="col gap-2">
+        <button type="button" className="btn btn-primary btn-block btn-lg" onClick={() => onPick("farmer")}>مزارع</button>
+        <button type="button" className="btn btn-secondary btn-block btn-lg" onClick={() => onPick("engineer")}>مهندس ميداني</button>
+        <button type="button" className="btn btn-secondary btn-block btn-lg" onClick={() => onPick("admin")}>مدير (أدمن)</button>
+      </div>
+      <a href="index.html" className="btn btn-ghost btn-block" style={{marginTop: 20}}>فتح لوحة الويب الكاملة</a>
+    </div>
+  );
+}
+
+function MobileAdminDash() {
+  return (
+    <div className="m-page m-page-anim">
+      <div style={{padding: "8px 0 12px"}}>
+        <div className="m-greeting">إدارة المنصّة</div>
+        <div className="m-name">لوحة الأدمن</div>
+      </div>
+      <div className="stat-row">
+        <div className="stat-tile"><div className="l">مستخدمون</div><div className="v">128</div></div>
+        <div className="stat-tile"><div className="l">مصايد</div><div className="v">١٫٢k</div></div>
+        <div className="stat-tile"><div className="l">تنبيهات</div><div className="v" style={{color:"var(--danger)"}}>٧</div></div>
+      </div>
+      <div className="list-card" style={{marginTop: 14, padding: 14}}>
+        <div style={{fontWeight: 600, marginBottom: 10}}>آخر النشاطات</div>
+        {["تسجيل جديد — باقة موسم","تنبيه حرج — TRAP-001","تحديث جهاز — الغربية"].map((t, i) => (
+          <div key={i} style={{fontSize: 13, padding:"10px 0", borderTop: i ? "1px solid var(--line)" : "none"}}>{t}</div>
+        ))}
+      </div>
+      <a href="index.html" className="btn btn-primary btn-block btn-lg" style={{marginTop: 16}}>فتح لوحة الويب (إدارة كاملة)</a>
+    </div>
+  );
+}
+
+function MobileEngineerDash({ onNav }) {
+  const jobs = [
+    { farm: "مزرعة الواحة", trap: "TRAP-004", task: "بطارية + فرمون", due: "اليوم ١٦:٠٠" },
+    { farm: "مزرعة النور", trap: "TRAP-006", task: "إعادة اتصال", due: "غداً" },
+    { farm: "مزرعة السلام", trap: "TRAP-008", task: "متابعة إصابة", due: "٤٨ ساعة" },
+  ];
+  return (
+    <div className="m-page m-page-anim">
+      <div style={{padding: "8px 0 12px"}}>
+        <div className="m-greeting">فريق الميدان</div>
+        <div className="m-name">مهام اليوم</div>
+      </div>
+      {jobs.map((j, i) => (
+        <div key={i} className="list-card" style={{padding: 14, marginBottom: 10}}>
+          <div className="t-mono" style={{fontSize: 10, color:"var(--ink-3)", marginBottom: 4}}>{j.trap}</div>
+          <div style={{fontWeight: 600}}>{j.farm}</div>
+          <div style={{fontSize: 13, color:"var(--ink-2)", marginTop: 4}}>{j.task}</div>
+          <div style={{fontFamily:"var(--font-mono)", fontSize: 11, marginTop: 8, color:"var(--brand)"}}>{j.due}</div>
+          <button type="button" className="btn btn-primary btn-sm" style={{marginTop: 10}} onClick={() => onNav("trap")}>تفاصيل المصيدة</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ===== Bottom Nav =====
+function BottomNav({ tab, onChange, onNav, role }) {
+  const homeIcon = role === "admin" ? "Shield" : role === "engineer" ? "Zap" : "Home";
+  const homeLabel = role === "admin" ? "لوحة" : role === "engineer" ? "مهام" : "الرئيسية";
+  const items = [
+    {id:"home", label: homeLabel, icon: homeIcon},
+    {id:"trap", label:"المصيدة", icon:"Trap"},
+    {id:"_", label:"", fab: true},
+    {id:"alerts", label:"التنبيهات", icon:"Bell", badge: 2},
+    {id:"profile", label:"حسابي", icon:"User"},
+  ];
+  return (
+    <div className="bottom-nav">
+      {items.map((it, i) => {
+        if (it.fab) return (
+          <div key={i} className="bnav-item" onClick={() => onNav("technician")}>
+            <div className="bnav-fab"><window.I.Plus size={22} sw={2.2}/></div>
+          </div>
+        );
+        const IconC = window.I[it.icon];
+        const active = tab === it.id;
+        return (
+          <div key={it.id} className={"bnav-item " + (active ? "active" : "")} onClick={() => onChange(it.id)} style={{position:"relative"}}>
+            <IconC size={20}/>
+            <span>{it.label}</span>
+            {it.badge && <span style={{
+              position:"absolute", top: 2, insetInlineEnd: "30%",
+              background:"var(--danger)", color:"#fff",
+              fontSize: 9, padding: "1px 5px", borderRadius: 999,
+              fontFamily:"var(--font-mono)", fontWeight: 600
+            }}>{it.badge}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ===== App =====
+function App() {
+  const [session, setSession] = useState(() => window.KhoosSession.read());
+  const [tab, setTab] = useState("home");
+  const [overlay, setOverlay] = useState(null); // technician | subscription
+
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key === window.KhoosSession.STORAGE_KEY || e.key === null)
+        setSession(window.KhoosSession.read());
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const pickRole = (role) => {
+    var profile = window.KhoosSession.demoProfile(role);
+    window.KhoosSession.save(profile);
+    setSession(profile);
+    setTab("home");
+    setOverlay(null);
+  };
+
+  const logout = () => {
+    window.KhoosSession.clear();
+    setSession(null);
+    setTab("home");
+    setOverlay(null);
+  };
+
+  const navTo = (p) => {
+    if (p === "technician") setOverlay("technician");
+    else if (p === "subscription") setOverlay("subscription");
+    else if (p === "alerts") setTab("alerts");
+    else setTab(p);
+  };
+
+  const role = (session && session.role) || "farmer";
+
+  let body;
+  if (!session) body = <MobileLogin onPick={pickRole} />;
+  else if (overlay === "technician") body = <Technician onBack={() => setOverlay(null)}/>;
+  else if (overlay === "subscription") body = <Subscription onBack={() => setOverlay(null)}/>;
+  else if (tab === "home") {
+    if (role === "admin") body = <MobileAdminDash />;
+    else if (role === "engineer") body = <MobileEngineerDash onNav={navTo}/>;
+    else body = <Home onNav={navTo} session={session}/>;
+  }
+  else if (tab === "trap") body = <TrapDetail onBack={() => setTab("home")}/>;
+  else if (tab === "alerts") body = <Alerts onNav={navTo}/>;
+  else if (tab === "profile") body = <Profile onNav={navTo} session={session} onLogout={logout}/>;
+
+  const showShellHeader =
+    !!session && !overlay && (tab === "alerts" || tab === "profile" || tab === "trap");
+
+  const padGuest = !session && !overlay;
+  const padTop =
+    padGuest
+      ? (window.innerWidth < 481 ? 14 : 70)
+      : showShellHeader || overlay
+        ? window.innerWidth < 481 ? 56 : 100
+        : window.innerWidth < 481 ? 14 : 70;
+
+  return (
+    <>
+      <div className="scroll-body" style={{paddingTop: padTop}}>
+        {body}
+      </div>
+      {session && !overlay && <BottomNav tab={tab} onChange={setTab} onNav={navTo} role={role}/>}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

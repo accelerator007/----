@@ -1,0 +1,17 @@
+{
+  "name": "خوص — منصة المزارعين",
+  "short_name": "خوص",
+  "description": "تطبيق المزارعين الذكي لمراقبة مصايد سوسة النخيل",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./saaf-mobile.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#3a2f23",
+  "theme_color": "#3a2f23",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
